@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Modal, FlatList, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../hooks/useProfile';
@@ -42,9 +42,19 @@ export default function ProfileScreen() {
 
 function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isOwnProfile: boolean, authUid: string | null }) {
   const { profile, isFollowing, loading: profileLoading, error: profileError, refresh: refreshProfile } = useProfile(userId);
-  const { videos, loading: videosLoading } = useProfileVideos(userId, profile);
+  const { videos, loading: videosLoading, refresh: refreshVideos } = useProfileVideos(userId, profile);
   const [selectedVideo, setSelectedVideo] = useState<FeedVideo | null>(null);
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Re-fetch profile + videos every time this screen gains focus.
+  // Fixes stale data when returning after an upload or interaction.
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [refreshProfile])
+  );
 
   if (profileLoading) {
     return (
@@ -61,6 +71,14 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
           <Text style={{color: 'red'}}>Error loading profile</Text>
+          <TouchableOpacity 
+            style={{ marginTop: 20, padding: 10, backgroundColor: '#FF3B30', borderRadius: 8 }}
+            onPress={async () => {
+              await supabase.auth.signOut({ scope: 'local' });
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: '600' }}>Force Logout</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -74,6 +92,63 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
 
   const handleEditProfile = () => {
     setIsEditProfileVisible(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await supabase.auth.signOut();
+      // onAuthStateChange in App.tsx handles redirect — no manual navigation needed
+    } catch (err) {
+      console.error('Logout error:', err);
+      Alert.alert('Error', 'Could not log out. Please try again.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account?',
+      'This action is permanent. Your profile, videos, comments, follows, and account data will be permanently removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingAccount(true);
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.access_token) {
+                throw new Error("No active session found. Please log in again.");
+              }
+              const { error } = await supabase.functions.invoke('delete-account', {
+                body: { token: session.access_token },
+                headers: {
+                  Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+                }
+              });
+              if (error) throw error;
+              
+              // Success — sign out LOCALLY. 
+              // We must use scope: 'local' because the user is already deleted on the server, 
+              // so a standard network signOut would throw a 404/401 error and abort.
+              await supabase.auth.signOut({ scope: 'local' });
+            } catch (err) {
+              console.error('Account deletion error:', err);
+              // Do NOT sign out — leave session intact on failure
+              Alert.alert(
+                'Error',
+                'Failed to delete account. Please try again.'
+              );
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleFollowToggle = () => {
@@ -198,7 +273,28 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
             <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
               <Text style={styles.editButtonText}>Edit Profile</Text>
             </TouchableOpacity>
-            <Text style={styles.deleteText}>Want to delete your account? Contact admin.</Text>
+
+            <View style={styles.accountActionsRow}>
+              <TouchableOpacity
+                style={[styles.logoutButton, isLoggingOut && styles.buttonDisabled]}
+                onPress={handleLogout}
+                disabled={isLoggingOut}
+              >
+                <Text style={styles.logoutButtonText}>
+                  {isLoggingOut ? 'Logging out…' : 'Logout'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.deleteAccountButton, isDeletingAccount && styles.buttonDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={isDeletingAccount}
+              >
+                <Text style={styles.deleteAccountButtonText}>
+                  {isDeletingAccount ? 'Deleting…' : 'Delete Account'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <TouchableOpacity 
@@ -416,10 +512,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  deleteText: {
-    fontSize: 12,
+  logoutButton: {
+    flex: 1,
+    height: 52,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#9CA3AF',
   },
+  deleteAccountButton: {
+    flex: 1,
+    height: 52,
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteAccountButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+  accountActionsRow: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+
   followButton: {
     width: '100%',
     height: 52,

@@ -46,7 +46,7 @@ export function useProfile(userId: string) {
           .from('users')
           .select('id, username, avatar_url, bio, matricule, email')
           .eq('id', userId)
-          .single(),
+          .maybeSingle(),
 
         supabase
           .from('videos')
@@ -78,6 +78,7 @@ export function useProfile(userId: string) {
       ]);
 
       if (userRes.error) throw userRes.error;
+      if (!userRes.data) throw new Error("Profile not found");
       if (videoCountRes.error) throw videoCountRes.error;
       if (likesRes.error) throw likesRes.error;
       if (followersRes.error) throw followersRes.error;
@@ -102,7 +103,12 @@ export function useProfile(userId: string) {
       setIsFollowing((isFollowingRes.count || 0) > 0);
 
     } catch (err: any) {
-      console.error('Error fetching profile:', err);
+      if (err.message === "Profile not found") {
+        // Automatically recover from deleted accounts or orphaned sessions
+        supabase.auth.signOut({ scope: 'local' }).catch(console.error);
+      } else {
+        console.error('Error fetching profile:', err);
+      }
       setError(err.message || 'Failed to load profile.');
     } finally {
       setLoading(false);
