@@ -11,11 +11,12 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused, useFocusEffect } from '@react-navigation/native';
+import { useIsFocused, useFocusEffect, useNavigation } from '@react-navigation/native';
 import supabase from '../../supabase/client';
 import { useFeed, FeedType, FeedVideo } from '../hooks/useFeed';
 import { useLike } from '../hooks/useLike';
 import VideoCard from '../components/VideoCard';
+import CommentsSheet from '../components/CommentsSheet';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,10 +44,23 @@ function SkeletonCard() {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
 
   const [feedType, setFeedType] = useState<FeedType>('forYou');
-  const { videos, loadMore, refresh, loading, refreshing, error, setVideos } =
-    useFeed(feedType);
+  const {
+    videos,
+    loadMore,
+    refresh,
+    loading,
+    refreshing,
+    error,
+    setVideos,
+    markCommentAsLocallyDeleted,
+    clearAllLocallyDeletedComments,
+    consumeLocallyDeletedComment,
+    optimisticDeleteCommentCount,
+    optimisticRestoreCommentCount,
+  } = useFeed(feedType);
   const { toggleLike } = useLike(setVideos);
 
   // Track current user ID for VideoCard ownership checks
@@ -56,6 +70,9 @@ export default function HomeScreen() {
       setCurrentUserId(data?.user?.id ?? null);
     });
   }, []);
+
+  // Comments Sheet state
+  const [activeCommentVideo, setActiveCommentVideo] = useState<FeedVideo | null>(null);
 
   // Active video tracking — use ref to avoid re-render on every scroll
   const activeIndexRef = useRef<number>(0);
@@ -111,15 +128,15 @@ export default function HomeScreen() {
     [setVideos],
   );
 
-  // Comment placeholder (Phase 3)
-  const handleComment = useCallback((_video: FeedVideo) => {
-    // CommentsSheet will be wired in Phase 3
+  // Comment handler
+  const handleComment = useCallback((video: FeedVideo) => {
+    setActiveCommentVideo(video);
   }, []);
 
-  // Profile navigation placeholder (Phase 3)
-  const handleProfile = useCallback((_userId: string) => {
-    // ProfileScreen navigation will be wired in Phase 3
-  }, []);
+  // Profile navigation
+  const handleProfile = useCallback((userId: string) => {
+    navigation.navigate('Profile', { userId });
+  }, [navigation]);
 
   // ── Render helpers ──────────────────────────────────────────────────────────
 
@@ -230,6 +247,20 @@ export default function HomeScreen() {
         feedType={feedType}
         onSwitch={handleTabSwitch}
         insetTop={insets.top}
+      />
+
+      {/* Comments Sheet */}
+      <CommentsSheet
+        visible={!!activeCommentVideo}
+        onClose={() => setActiveCommentVideo(null)}
+        videoId={activeCommentVideo?.id || null}
+        currentUserId={currentUserId}
+        onProfile={handleProfile}
+        markCommentAsLocallyDeleted={markCommentAsLocallyDeleted}
+        clearAllLocallyDeletedComments={clearAllLocallyDeletedComments}
+        consumeLocallyDeletedComment={consumeLocallyDeletedComment}
+        optimisticDeleteCommentCount={optimisticDeleteCommentCount}
+        optimisticRestoreCommentCount={optimisticRestoreCommentCount}
       />
     </View>
   );

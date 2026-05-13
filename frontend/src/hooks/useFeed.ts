@@ -25,6 +25,17 @@ interface UseFeedResult {
   refreshing: boolean;
   error: string | null;
   setVideos: React.Dispatch<React.SetStateAction<FeedVideo[]>>;
+  markCommentAsLocallyDeleted: (commentId: string) => void;
+  clearAllLocallyDeletedComments: () => void;
+  /**
+   * Checks whether a comment was deleted locally (optimistic flow).
+   * Returns true and removes the ID from the tracking set if found.
+   * Returns false if the deletion originated externally.
+   * Used by CommentsSheet to decide whether to decrement the global count.
+   */
+  consumeLocallyDeletedComment: (commentId: string) => boolean;
+  optimisticDeleteCommentCount: (videoId: string) => void;
+  optimisticRestoreCommentCount: (videoId: string) => void;
 }
 
 const PAGE_SIZE = 10;
@@ -35,10 +46,53 @@ export function useFeed(feedType: FeedType): UseFeedResult {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Use refs to prevent stale closure issues in callbacks
   const pageRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
   const feedTypeRef = useRef(feedType);
+
+  // Track locally deleted comments to prevent double decrements
+  const locallyDeletedCommentIds = useRef<Set<string>>(new Set());
+
+  const markCommentAsLocallyDeleted = useCallback((commentId: string) => {
+    locallyDeletedCommentIds.current.add(commentId);
+  }, []);
+
+  const clearAllLocallyDeletedComments = useCallback(() => {
+    locallyDeletedCommentIds.current.clear();
+  }, []);
+
+  /**
+   * Atomically checks + removes a comment from the locally-deleted tracking set.
+   * Returns true  → deletion was local (already decremented optimistically).
+   * Returns false → deletion is external (caller must decrement now).
+   */
+  const consumeLocallyDeletedComment = useCallback((commentId: string): boolean => {
+    if (locallyDeletedCommentIds.current.has(commentId)) {
+      locallyDeletedCommentIds.current.delete(commentId);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const optimisticDeleteCommentCount = useCallback((videoId: string) => {
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId
+          ? { ...v, comment_count: Math.max(0, Number(v.comment_count || 0) - 1) }
+          : v
+      )
+    );
+  }, []);
+
+  const optimisticRestoreCommentCount = useCallback((videoId: string) => {
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId
+          ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
+          : v
+      )
+    );
+  }, []);
 
   /**
    * Core fetch function.
@@ -99,6 +153,37 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     fetchPage(0);
   }, [feedType, fetchPage]);
 
+  // Global realtime subscription — INSERT only.
+  // Supabase Realtime only sends the primary key in payload.old for DELETE events
+  // on unfiltered subscriptions, even with FULL replica identity. DELETE count
+  // decrements are therefore handled inside CommentsSheet, which already receives
+  // filtered DELETE events and has videoId in scope.
+  useEffect(() => {
+    const channel = supabase
+      .channel('global_feed_comments')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comments' },
+        (payload) => {
+          const newComment = payload.new;
+          if (newComment && newComment.video_id) {
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === newComment.video_id
+                  ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
+                  : v
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   /** Append next page (no-op if already loading) */
   const loadMore = useCallback(() => {
     if (isLoadingMoreRef.current) return;
@@ -113,5 +198,18 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     await fetchPage(0, true);
   }, [fetchPage]);
 
-  return { videos, loadMore, refresh, loading, refreshing, error, setVideos };
+  return {
+    videos,
+    loadMore,
+    refresh,
+    loading,
+    refreshing,
+    error,
+    setVideos,
+    markCommentAsLocallyDeleted,
+    clearAllLocallyDeletedComments,
+    consumeLocallyDeletedComment,
+    optimisticDeleteCommentCount,
+    optimisticRestoreCommentCount,
+  };
 }

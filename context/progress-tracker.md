@@ -2,8 +2,8 @@
 
 ## Current Status
 
-**Active Phase:** Phase 3 — Upload Screen (bug fix in progress)
-**Last Updated:** Phase 3 built, media picker bug reported
+**Active Phase:** Phase 4 — Comments (fully complete)
+**Last Updated:** 2026-05-13
 
 ---
 
@@ -44,66 +44,95 @@ Completed items:
 - [DONE] App color: purple accent (#8B5CF6) established ✓
 
 Notes:
-- Feed is empty (expected — no videos uploaded yet)
+- Feed is not empty (it has 3 videos)
 - Following tab empty (expected — no follows yet)
 - Comment button wired but CommentsSheet not built until Phase 4
 - Report option wired but ReportSheet not built until Phase 7
 
 ---
 
-### [IN PROGRESS] Phase 3 — Upload Screen
+### [DONE] Phase 3 — Upload Screen
 
 Completed items:
 - [DONE] src/screens/UploadScreen.tsx created
 - [DONE] Caption input with character counter
 - [DONE] Post button and upload flow structure
+- [DONE] Media picker permissions fixed (expo-image-picker)
+- [DONE] Upload via expo-file-system/legacy createUploadTask
+- [DONE] Supabase handle_new_user trigger repaired (FK constraint fix)
+- [DONE] Video row inserts correctly into Supabase videos table
 
-Known Bug:
-- [FIXED] Media picker fails with error:
-  "Could not open the media picker. Please try again."
-  Root cause: expo-image-picker permissions not configured
-  correctly for the device/platform.
-  Fix applied: Added proper permissions configuration for
-  expo-image-picker in app.json and requested permissions
-  at runtime before calling launchImageLibraryAsync().
-
-Still needed after bug fix:
-- [ ] Verify video preview renders after pick
-- [ ] Verify duration badge shows on preview
-- [ ] Verify thumbnail generation works (expo-video-thumbnails)
-- [ ] Verify upload progress bar works
-- [ ] Verify video row appears in Supabase videos table after post
-- [ ] Verify redirect to Home feed after successful post
-- [ ] Verify upload rate limiting works (max 5/hour)
-- [ ] Test file size validation (reject over 50MB)
+Notes:
+- Upload uses legacy FileSystem API; migrate when scope allows
+- Rate limiting (5/hr) and 50MB file size check are validated server-side
 
 ---
 
-### [ ] Phase 4 — Comments Bottom Sheet
+### [DONE] Phase 4 — Comments Bottom Sheet
 
-Not started.
+Completed items:
+- [DONE] src/components/CommentsSheet.tsx (Rebuilt from scratch)
+- [DONE] Modal-based sheet with animated slide-up/down
+- [DONE] Flicker-free keyboard handling (keyboardDidShow/Hide listeners,
+         dual translateY transforms — NO KeyboardAvoidingView)
+- [DONE] Platform-aware keyboard offset (iOS only, Android uses adjustResize)
+- [DONE] Sheet height stays fixed at 65% of visible space when keyboard opens
+- [DONE] Fetch all comments per videoId on open
+- [DONE] Realtime INSERT subscription per videoId (live comment stream)
+- [DONE] Realtime DELETE subscription per videoId (live delete sync)
+- [DONE] Add comment → keyboard dismisses → comment appears via Realtime
+- [DONE] Long press own comment → confirmation dialog → optimistic delete
+- [DONE] Long press other user's comment → no action
+- [DONE] Optimistic delete: removes comment instantly, decrements counter
+- [DONE] Delete rollback: restores comment + count on Supabase failure
+- [DONE] Tap avatar/username → navigates to Profile screen
+- [DONE] Wire to VideoCard comment button in HomeScreen
 
-Scope:
-- src/components/CommentsSheet.tsx
-- Fetch comments per videoId
-- Realtime INSERT subscription per videoId
-- Add comment with optimistic update
-- Wire to VideoCard comment button
+#### Comment Count Synchronization Architecture
+
+- [DONE] Global realtime INSERT listener inside useFeed.ts
+  → Increments feed comment_count for any new comment, regardless
+     of whether CommentsSheet is open
+- [DONE] CommentsSheet filtered DELETE listener handles count decrement
+  → Supabase Realtime only sends primary key in payload.old for
+     DELETE events on unfiltered subscriptions (confirmed via logging),
+     so the global handler cannot get video_id. CommentsSheet already
+     receives filtered DELETE events with videoId in scope.
+- [DONE] useFeed exposes deduplication API (not raw Set):
+  - markCommentAsLocallyDeleted(commentId)
+  - clearAllLocallyDeletedComments()
+  - consumeLocallyDeletedComment(commentId) → boolean  ← NEW
+    Atomically checks + removes from set; returns true if local,
+    false if external. Used by CommentsSheet DELETE handler.
+  - optimisticDeleteCommentCount(videoId)
+  - optimisticRestoreCommentCount(videoId)
+- [DONE] Double-decrement prevention:
+  CommentsSheet marks ID before delete → DELETE handler calls
+  consumeLocallyDeletedComment → returns true (local) → skips
+  optimisticDeleteCommentCount (already done optimistically)
+- [DONE] External delete (dashboard / another device):
+  DELETE handler → consumeLocallyDeletedComment returns false
+  → calls optimisticDeleteCommentCount(videoId) instantly
+- [DONE] Stale ID cleanup: clearAllLocallyDeletedComments() fires
+  in the sheet close animation callback (not on button press)
+- [DONE] Count never goes below 0 (Math.max(0, count - 1))
 
 ---
 
-### [ ] Phase 5 — Profile Screen
+### [DONE] Phase 5 — Profile Screen
 
-Not started.
-
-Scope:
-- src/hooks/useProfile.ts
-- src/screens/ProfileScreen.tsx (full implementation)
-- src/components/EditProfileSheet.tsx
-- Avatar upload, username edit, bio edit
-- Video grid with thumbnail cells
-- Follow/Unfollow button for other profiles
-- Navigation wiring from VideoCard and CommentsSheet
+Completed items:
+- [DONE] src/hooks/useProfile.ts
+- [DONE] src/screens/ProfileScreen.tsx (full implementation)
+- [DONE] src/components/EditProfileSheet.tsx
+- [DONE] Avatar upload, username edit, bio edit
+- [DONE] Video grid with thumbnail cells
+- [DONE] Tapping video grid item → opens video with live like/comment counts
+- [DONE] Follow/Unfollow button for other profiles
+- [DONE] Navigation wiring from VideoCard → ProfileScreen
+- [DONE] Navigation wiring from CommentsSheet → ProfileScreen
+- [DONE] Forgot Password (OTP) flow implemented
+- [DONE] RootNavigator.tsx — AuthChangeEvent TOKEN_REFRESH_FAILED cast fixed
 
 ---
 
@@ -142,17 +171,48 @@ Scope:
 | Issue | Phase | Status | Notes |
 |-------|-------|--------|-------|
 | Media picker fails to open | 3 | FIXED | Permissions configured |
-
+| Video open from profile grid crashed app | 5 | FIXED | Navigation stack corrected |
+| Like/comment counts stale when opening video from profile | 5 | FIXED | Aggressive re-fetch on open |
+| EditProfileSheet — avatar upload error | 5 | FIXED | Storage path + RLS corrected |
+| RootNavigator TOKEN_REFRESH_FAILED TS error | 5 | FIXED | Cast to string |
+| CommentsSheet blank on open (no input area) | 4 | FIXED | flex:1 + Modal wrapper |
+| Keyboard pushed tab bar up (Android double-push) | 4 | FIXED | Platform.OS guard on translateY |
+| Comment sheet covered full screen on keyboard open | 4 | FIXED | height: '65%' (dynamic) |
+| Comment count not incrementing without refresh | 4 | FIXED | Global realtime listener in useFeed |
+| HomeScreen.tsx transient syntax error | 4 | FIXED | Duplicate JSX tag removed |
+| Dashboard delete not syncing to app | 4 | FIXED | Realtime DELETE listener added |
+| Double-decrement on optimistic + realtime delete | 4 | FIXED | locallyDeletedCommentIds dedup set |
+| Realtime DELETE from dashboard doesn't decrement global count | 4 | FIXED | Supabase Realtime unfiltered DELETE only sends PK — moved decrement to CommentsSheet DELETE handler via consumeLocallyDeletedComment |
 ---
 
-## Session Notes
+## Architecture Notes
 
-- Bilingual UI (English/French) was removed
-  All remaining phases use English only.
-- Purple accent color (#8B5CF6) established by Stitch in Phase 1-2.
-  Keep consistent across all screens.
-- Context files added after Phase 3 started using the
-  JavaScript Mastery Six-File Context System to prevent
-  AI context drift across sessions.
-- Every new session must start by reading all context/ files
-  before writing any code.
+- **Keyboard handling:** Never use KeyboardAvoidingView in any bottom sheet.
+  Use keyboardDidShow/Hide listeners + dual translateY transforms only.
+  Android: platform guard sets keyboard offset to 0 (adjustResize handles it).
+  iOS: apply -keyboardHeight as second translateY.
+
+- **Comment counts:** Derived via COUNT() query only. No comment_count column
+  exists in the database schema. Do not add one.
+
+- **useFeed deduplication API:** CommentsSheet calls helper methods exposed
+  by useFeed — never owns global deduplication state directly.
+
+- **Realtime subscriptions:**
+  - Global: useFeed listens for INSERT only on `comments` table (all videos).
+    DELETE is intentionally excluded — Supabase Realtime unfiltered DELETE
+    events only include the primary key in payload.old, never video_id.
+  - Local: CommentsSheet listens for INSERT + DELETE on `comments` filtered
+    by `video_id=eq.${videoId}` (current open video only).
+    The DELETE handler owns count decrement for external deletes via
+    consumeLocallyDeletedComment dedup check + optimisticDeleteCommentCount.
+
+- **Bilingual UI removed:** All remaining phases use English only.
+
+- **Purple accent color:** #8B5CF6. Keep consistent across all screens.
+
+- **Upload API:** Uses expo-file-system/legacy createUploadTask.
+  Migrate to new FileSystem classes when scope allows.
+
+- **Context files:** Every new session must read all context/ files
+  before writing any code (JavaScript Mastery Six-File Context System).
