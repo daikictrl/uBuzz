@@ -9,6 +9,7 @@ import {
   Share,
   ActivityIndicator,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
@@ -49,6 +50,7 @@ export interface VideoCardProps {
   onComment: (video: FeedVideo) => void;
   onProfile: (userId: string) => void;
   onDelete: (videoId: string) => void;
+  singleVideoMode?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ export default function VideoCard({
   onComment,
   onProfile,
   onDelete,
+  singleVideoMode = false,
 }: VideoCardProps) {
   // Playback UI state
   const [isPaused, setIsPaused] = useState(false);
@@ -100,12 +103,37 @@ export default function VideoCard({
 
   // ── Play / pause controlled by isActive + user tap ─────────────────────────
   useEffect(() => {
-    if (isActive && !isPaused) {
-      player.play();
+    if (singleVideoMode) {
+      if (!isPaused) {
+        player.play();
+      } else {
+        player.pause();
+      }
     } else {
-      player.pause();
+      if (isActive && !isPaused) {
+        player.play();
+      } else {
+        player.pause();
+      }
     }
-  }, [isActive, isPaused, player]);
+  }, [isActive, isPaused, player, singleVideoMode]);
+
+  // ── AppState handling for singleVideoMode ──────────────────────────────────
+  useEffect(() => {
+    if (!singleVideoMode) return;
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState.match(/inactive|background/)) {
+        player.pause();
+      } else if (nextAppState === 'active' && !isPaused) {
+        player.play();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [singleVideoMode, isPaused, player]);
 
   // ── Mute sync ──────────────────────────────────────────────────────────────
   useEffect(() => {

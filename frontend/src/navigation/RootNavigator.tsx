@@ -154,6 +154,14 @@ function AppTabs({ navigation }: { navigation: AppTabsNavigationProp }) {
             <Ionicons name="person" color={color} size={size} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default action (which might preserve params)
+            e.preventDefault();
+            // Navigate explicitly to Profile with no params to load the logged-in user's profile
+            navigation.navigate('Profile', { userId: undefined });
+          },
+        })}
       />
     </Tab.Navigator>
   );
@@ -181,7 +189,7 @@ export default function RootNavigator() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (event === 'TOKEN_REFRESH_FAILED') {
+      if ((event as string) === 'TOKEN_REFRESH_FAILED') {
         // Session expired / token could not be refreshed — clear session.
         // The navigator will redirect to AuthScreen automatically.
         setSession(null);
