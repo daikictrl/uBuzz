@@ -60,6 +60,7 @@ export default function HomeScreen() {
     consumeLocallyDeletedComment,
     optimisticDeleteCommentCount,
     optimisticRestoreCommentCount,
+    followedCount,
   } = useFeed(feedType);
   const { toggleLike } = useLike(setVideos);
 
@@ -193,12 +194,6 @@ export default function HomeScreen() {
     );
   }
 
-  // ── Empty states ────────────────────────────────────────────────────────────
-  const emptyMessage =
-    feedType === 'forYou'
-      ? 'No videos yet. Be the first to post!'
-      : 'You are not following anyone yet.\nExplore the For You feed and follow students you like.';
-
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -235,9 +230,27 @@ export default function HomeScreen() {
         // ── Empty state ──
         ListEmptyComponent={
           <View style={[styles.card, styles.centered]}>
-            <Text style={[styles.stateText, { textAlign: 'center', paddingHorizontal: 32 }]}>
-              {emptyMessage}
-            </Text>
+            {feedType === 'forYou' ? (
+              <Text style={[styles.stateText, { textAlign: 'center', paddingHorizontal: 32 }]}>
+                No videos yet. Be the first to post!
+              </Text>
+            ) : followedCount === 0 ? (
+              <View style={{ alignItems: 'center', gap: 16 }}>
+                <Text style={[styles.stateText, { textAlign: 'center', paddingHorizontal: 32 }]}>
+                  You are not following anyone yet.
+                </Text>
+                <TouchableOpacity
+                  style={styles.exploreButton}
+                  onPress={() => handleTabSwitch('forYou')}
+                >
+                  <Text style={styles.exploreButtonText}>Explore For You</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={[styles.stateText, { textAlign: 'center', paddingHorizontal: 32 }]}>
+                No videos yet from people you follow.
+              </Text>
+            )}
           </View>
         }
       />
@@ -361,5 +374,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 1,
     marginTop: 2,
+  },
+  exploreButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#8B5CF6',
+  },
+  exploreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

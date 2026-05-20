@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../hooks/useProfile';
 import { useProfileVideos } from '../hooks/useProfileVideos';
+import { useFollow } from '../hooks/useFollow';
 import supabase from '../../supabase/client';
 import VideoCard from '../components/VideoCard';
 import EditProfileSheet from '../components/EditProfileSheet';
@@ -41,8 +42,16 @@ export default function ProfileScreen() {
 }
 
 function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isOwnProfile: boolean, authUid: string | null }) {
-  const { profile, isFollowing, loading: profileLoading, error: profileError, refresh: refreshProfile } = useProfile(userId);
+  const { profile, loading: profileLoading, error: profileError, refresh: refreshProfile } = useProfile(userId);
   const { videos, loading: videosLoading, refresh: refreshVideos } = useProfileVideos(userId, profile);
+  const {
+    isFollowing,
+    followerCount,
+    toggleFollow,
+    loading: followLoading,
+    refresh: refreshFollow
+  } = useFollow(userId);
+
   const [selectedVideo, setSelectedVideo] = useState<FeedVideo | null>(null);
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -53,7 +62,8 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
-    }, [refreshProfile])
+      refreshFollow();
+    }, [refreshProfile, refreshFollow])
   );
 
   if (profileLoading) {
@@ -181,15 +191,21 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
   const handleFollowToggle = () => {
     if (isFollowing) {
       Alert.alert(
-        "Unfollow",
         `Unfollow @${profile.username}?`,
+        "You will stop seeing their videos in your Following feed.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Unfollow", style: "destructive", onPress: () => console.log("Unfollow placeholder") }
+          { 
+            text: "Unfollow", 
+            style: "destructive", 
+            onPress: () => {
+              toggleFollow();
+            } 
+          }
         ]
       );
     } else {
-      console.log("Follow placeholder");
+      toggleFollow();
     }
   };
 
@@ -285,7 +301,7 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
           <Text style={styles.statLabel}>Videos</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statNumber}>{profile.stats.followers}</Text>
+          <Text style={styles.statNumber}>{followerCount}</Text>
           <Text style={styles.statLabel}>Followers</Text>
         </View>
         <View style={styles.statCol}>
@@ -325,8 +341,9 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
           </View>
         ) : (
           <TouchableOpacity 
-            style={[styles.followButton, isFollowing ? styles.followingButton : styles.notFollowingButton]} 
+            style={[styles.followButton, isFollowing ? styles.followingButton : styles.notFollowingButton, followLoading && styles.buttonDisabled]} 
             onPress={handleFollowToggle}
+            disabled={followLoading}
           >
             <Text style={isFollowing ? styles.followingText : styles.notFollowingText}>
               {isFollowing ? "Following" : "Follow"}

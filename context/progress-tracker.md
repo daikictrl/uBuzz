@@ -142,21 +142,20 @@ Completed items:
 
 ---
 
-### [ ] Phase 6 — Follows System + Feed Filter
+### [DONE] Phase 6 — Follows System + Feed Filter
 
-Not started.
-
-Scope:
-- src/hooks/useFollow.ts
-- Wire follow/unfollow to ProfileScreen
-- Update useFeed.ts for "following" feedType query
-- Wire Following tab in HomeScreen to filtered feed
+Completed items:
+- [DONE] Custom follow state hook `src/hooks/useFollow.ts`
+- [DONE] Wired follow/unfollow logic to ProfileScreen
+- [DONE] Integrated Following Feed Query and RLS rules
+- [DONE] Added request-awareness request sequence to `useFeed.ts` to fix race conditions
+- [DONE] Added synchronous state reset on FeedType changes to avoid UI flicker
+- [DONE] Wired HomeScreen tabs and multi-state ListEmptyComponent
+- [DONE] Implemented Explore For You redirection button on empty following feed
 
 ---
 
-### [ ] Phase 7 — Polish + Production Hardening
-
-Not started.
+### [IN PROGRESS] Phase 7 — Polish + Production Hardening
 
 Scope:
 - src/components/SkeletonCard.tsx
@@ -193,6 +192,14 @@ Scope:
 | Parallel useProfile mounts trigger concurrent inserts | 5 | FIXED | Implemented activeRecoveries promise cache map to deduplicate parallel queries |
 | Redbox developer overlays on expected network/profile errors | 5 | FIXED | Swapped console.error to console.warn inside catch blocks of useProfile and UploadScreen |
 | Technical DB constraint error shown during upload failure | 3 | FIXED | Added friendly UI translation for videos_user_id_fkey constraint messages |
+---
+
+## Session Notes
+
+- Video duration cap (60s) to be removed in Phase 7
+- File size limit raised to 70MB in Phase 7
+- Storage migration to Cloudinary deferred to post-MVP
+
 ---
 
 ## Architecture Notes
