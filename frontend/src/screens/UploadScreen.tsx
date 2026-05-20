@@ -223,6 +223,75 @@ export default function UploadScreen({ navigation }: Props) {
     }
     const user = session.user;
 
+    // ── Pre-Upload Safety: Verify Profile Existence ───────────────────────────
+    let profileExists = false;
+    try {
+      const { data: profileData, error: profileFetchError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileFetchError) {
+        console.warn('[UploadScreen] Error checking profile existence:', profileFetchError.message);
+      } else if (profileData) {
+        profileExists = true;
+      }
+    } catch (err) {
+      console.warn('[UploadScreen] Profile check exception:', err);
+    }
+
+    if (!profileExists) {
+      console.warn(`[UploadScreen] Profile for user ${user.id} is missing in DB. Attempting recovery before upload...`);
+      try {
+        const userEmail = user.email || `placeholder_${user.id.substring(0, 8)}@ubuzz.campus`;
+        const uniqueId = Math.random().toString(36).substring(2, 8);
+        const fallbackUsername = `user_${uniqueId}`;
+        const fallbackMatricule = `IU${Math.floor(10000 + Math.random() * 90000)}`;
+
+        const { data: recoveryData, error: recoveryError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: userEmail,
+            username: fallbackUsername,
+            matricule: fallbackMatricule,
+            bio: 'Auto-recovered profile placeholder (via upload safety)',
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (recoveryError) {
+          console.warn('[UploadScreen] Profile recovery before upload failed:', recoveryError.message);
+          Alert.alert(
+            'Upload Blocked',
+            'Your user profile is missing from the database. Please visit your Profile tab to auto-create it or contact support.',
+            [{ text: 'OK' }]
+          );
+          return;
+        } else if (recoveryData) {
+          console.log('[UploadScreen] Profile successfully auto-created during upload recovery.');
+          profileExists = true;
+        } else {
+          console.warn('[UploadScreen] Profile recovery returned no data.');
+          Alert.alert(
+            'Upload Blocked',
+            'Your user profile could not be verified. Please visit your Profile tab and try again.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      } catch (recoveryErr) {
+        console.warn('[UploadScreen] Profile recovery exception:', recoveryErr);
+        Alert.alert(
+          'Upload Blocked',
+          'Failed to recover your user profile. Please check your connection and try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+
     const fileId = generateId();
     const videoPath = `${user.id}/${fileId}.mp4`;
     const thumbPath = `${user.id}/${fileId}.jpg`;
@@ -353,16 +422,16 @@ export default function UploadScreen({ navigation }: Props) {
       if (cancelledRef.current) return; // ignore errors after cancel
 
       const msg = e instanceof Error ? e.message : 'Something went wrong during upload.';
-      console.error('[UploadScreen] Upload error:', msg);
+      console.warn('[UploadScreen] Upload error:', msg);
 
-      const isNetwork =
-        msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch');
+      let userFriendlyMessage = msg;
+      if (msg.includes('videos_user_id_fkey') || msg.includes('foreign key constraint')) {
+        userFriendlyMessage = 'Your user profile is missing from the database. Please visit your Profile tab to automatically restore it.';
+      } else if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
+        userFriendlyMessage = 'Upload failed. Check your connection and try again.';
+      }
 
-      setErrorMessage(
-        isNetwork
-          ? 'Upload failed. Check your connection and try again.'
-          : msg,
-      );
+      setErrorMessage(userFriendlyMessage);
       setPhase('error');
     }
   }, [videoUri, caption, thumbnailUri, navigation]);

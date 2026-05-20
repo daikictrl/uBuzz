@@ -16,6 +16,8 @@ export interface ProfileData {
   };
 }
 
+const activeRecoveries = new Map<string, Promise<any>>();
+
 export function useProfile(userId: string) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -78,7 +80,69 @@ export function useProfile(userId: string) {
       ]);
 
       if (userRes.error) throw userRes.error;
-      if (!userRes.data) throw new Error("Profile not found");
+
+      let userData = userRes.data;
+
+      // If profile row is missing and this is the authenticated user's own profile, attempt recovery
+      if (!userData && authUid === userId) {
+        let recoveryPromise = activeRecoveries.get(userId);
+        if (!recoveryPromise) {
+          console.warn(`Profile row for authenticated user ${userId} is missing. Attempting lightweight recovery...`);
+          recoveryPromise = (async () => {
+            const userEmail = sessionData?.session?.user?.email || `placeholder_${userId.substring(0, 8)}@ubuzz.campus`;
+            
+            // Generate unique fallback credentials to satisfy DB constraints
+            const uniqueId = Math.random().toString(36).substring(2, 8);
+            const fallbackUsername = `user_${uniqueId}`;
+            const fallbackMatricule = `IU${Math.floor(10000 + Math.random() * 90000)}`;
+
+            const { data, error } = await supabase
+              .from('users')
+              .insert({
+                id: userId,
+                email: userEmail,
+                username: fallbackUsername,
+                matricule: fallbackMatricule,
+                bio: 'Auto-recovered profile placeholder',
+              })
+              .select('id, username, avatar_url, bio, matricule, email')
+              .maybeSingle();
+
+            if (error) {
+              // If duplicate key error occurs, it means another concurrent request succeeded
+              if (error.code === '23505') {
+                console.log('Recovery collision detected (another call inserted first). Fetching newly created profile...');
+                const { data: fetchedData } = await supabase
+                  .from('users')
+                  .select('id, username, avatar_url, bio, matricule, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+                if (fetchedData) return fetchedData;
+              }
+              throw error;
+            }
+            return data;
+          })();
+          activeRecoveries.set(userId, recoveryPromise);
+        }
+
+        try {
+          const recoveryData = await recoveryPromise;
+          if (recoveryData) {
+            userData = recoveryData;
+          }
+        } catch (recoveryErr) {
+          console.warn('Lightweight profile recovery insertion failed:', recoveryErr);
+        } finally {
+          activeRecoveries.delete(userId);
+        }
+      }
+
+      if (!userData) {
+        console.warn(`Profile row not found for user ${userId}. No recovery possible.`);
+        throw new Error("Profile not found");
+      }
+
       if (videoCountRes.error) throw videoCountRes.error;
       if (likesRes.error) throw likesRes.error;
       if (followersRes.error) throw followersRes.error;
@@ -86,12 +150,12 @@ export function useProfile(userId: string) {
       if (isFollowingRes.error) throw isFollowingRes.error;
 
       setProfile({
-        id: userRes.data.id,
-        username: userRes.data.username,
-        avatar_url: userRes.data.avatar_url,
-        bio: userRes.data.bio,
-        matricule: userRes.data.matricule,
-        email: userRes.data.email,
+        id: userData.id,
+        username: userData.username,
+        avatar_url: userData.avatar_url,
+        bio: userData.bio,
+        matricule: userData.matricule,
+        email: userData.email,
         stats: {
           videoCount: videoCountRes.count || 0,
           totalLikes: likesRes.count || 0,
@@ -104,10 +168,9 @@ export function useProfile(userId: string) {
 
     } catch (err: any) {
       if (err.message === "Profile not found") {
-        // Automatically recover from deleted accounts or orphaned sessions
-        supabase.auth.signOut({ scope: 'local' }).catch(console.error);
+        console.warn('Profile row missing for:', userId);
       } else {
-        console.error('Error fetching profile:', err);
+        console.warn('Error fetching profile:', err);
       }
       setError(err.message || 'Failed to load profile.');
     } finally {

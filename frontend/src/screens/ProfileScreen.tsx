@@ -70,15 +70,42 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <Text style={{color: 'red'}}>Error loading profile</Text>
-          <TouchableOpacity 
-            style={{ marginTop: 20, padding: 10, backgroundColor: '#FF3B30', borderRadius: 8 }}
-            onPress={async () => {
-              await supabase.auth.signOut({ scope: 'local' });
-            }}
-          >
-            <Text style={{ color: 'white', fontWeight: '600' }}>Force Logout</Text>
-          </TouchableOpacity>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" style={{ marginBottom: 16 }} />
+          <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
+            Profile Not Found
+          </Text>
+          <Text style={{ color: '#9CA3AF', fontSize: 14, textAlign: 'center', marginHorizontal: 32, marginBottom: 24 }}>
+            The profile row in the database could not be loaded or is missing.
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 12,
+                backgroundColor: '#8B5CF6',
+                borderRadius: 10,
+              }}
+              onPress={() => refreshProfile()}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Retry</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: '#EF4444',
+                borderRadius: 10,
+              }}
+              onPress={async () => {
+                await supabase.auth.signOut({ scope: 'local' });
+              }}
+            >
+              <Text style={{ color: '#EF4444', fontWeight: '600' }}>Force Logout</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );

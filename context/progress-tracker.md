@@ -2,8 +2,8 @@
 
 ## Current Status
 
-**Active Phase:** Phase 4 — Comments (fully complete)
-**Last Updated:** 2026-05-13
+**Active Phase:** Phase 5 — Profile Screen (fully complete, including Profile Hardening & Recovery)
+**Last Updated:** 2026-05-20
 
 ---
 
@@ -61,10 +61,13 @@ Completed items:
 - [DONE] Upload via expo-file-system/legacy createUploadTask
 - [DONE] Supabase handle_new_user trigger repaired (FK constraint fix)
 - [DONE] Video row inserts correctly into Supabase videos table
+- [DONE] Pre-upload profile verification safety checks & auto-recovery (blocks constraints, prevents data wasting)
+- [DONE] Translated raw DB constraints to user-friendly alert messages
 
 Notes:
 - Upload uses legacy FileSystem API; migrate when scope allows
 - Rate limiting (5/hr) and 50MB file size check are validated server-side
+- Added pre-upload validation to check user profile status before initiating file transfers
 
 ---
 
@@ -133,6 +136,9 @@ Completed items:
 - [DONE] Navigation wiring from CommentsSheet → ProfileScreen
 - [DONE] Forgot Password (OTP) flow implemented
 - [DONE] RootNavigator.tsx — AuthChangeEvent TOKEN_REFRESH_FAILED cast fixed
+- [DONE] Hardened useProfile profile-check: disabled automatic logout on missing profile
+- [DONE] Added client-side activeRecoveries map to deduplicate concurrent profile creations
+- [DONE] Created premium fallback UI inside ProfileScreen with Force Logout and Retry options
 
 ---
 
@@ -183,6 +189,10 @@ Scope:
 | Dashboard delete not syncing to app | 4 | FIXED | Realtime DELETE listener added |
 | Double-decrement on optimistic + realtime delete | 4 | FIXED | locallyDeletedCommentIds dedup set |
 | Realtime DELETE from dashboard doesn't decrement global count | 4 | FIXED | Supabase Realtime unfiltered DELETE only sends PK — moved decrement to CommentsSheet DELETE handler via consumeLocallyDeletedComment |
+| Profile row missing triggers auto-signout / crash | 5 | FIXED | Removed automatic sign-out on missing profile; implemented lightweight recovery |
+| Parallel useProfile mounts trigger concurrent inserts | 5 | FIXED | Implemented activeRecoveries promise cache map to deduplicate parallel queries |
+| Redbox developer overlays on expected network/profile errors | 5 | FIXED | Swapped console.error to console.warn inside catch blocks of useProfile and UploadScreen |
+| Technical DB constraint error shown during upload failure | 3 | FIXED | Added friendly UI translation for videos_user_id_fkey constraint messages |
 ---
 
 ## Architecture Notes
