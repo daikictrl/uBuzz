@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import supabase from '../../supabase/client';
-import { isValidEmail, isValidMatricule, isValidUsername } from '../lib/validation';
+import { isValidEmail, isValidMatricule, isValidUsername, sanitizeText } from '../lib/validation';
 
 type Mode = 'signup' | 'login';
 
@@ -81,7 +81,7 @@ export default function AuthScreen() {
 
     // --- Full Name ---
     // BUG-2: validate fullName
-    const trimmedFullName = fullName.trim();
+    const trimmedFullName = sanitizeText(fullName.trim(), 50);
     if (trimmedFullName.length < 2) {
       setFullNameError('Full name is required.');
       isValid = false;
@@ -90,7 +90,7 @@ export default function AuthScreen() {
     }
 
     // --- Username ---
-    const trimmedUsername = username.trim();
+    const trimmedUsername = sanitizeText(username.trim().toLowerCase(), 20);
     const userValidation = isValidUsername(trimmedUsername);
     if (!userValidation.valid) {
       setUsernameError(userValidation.error);

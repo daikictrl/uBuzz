@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Modal, FlatList, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Modal, FlatList, Pressable, Animated } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,9 +12,79 @@ import supabase from '../../supabase/client';
 import VideoCard from '../components/VideoCard';
 import EditProfileSheet from '../components/EditProfileSheet';
 import { FeedVideo } from '../hooks/useFeed';
+import SkeletonGrid from '../components/SkeletonGrid';
+import { badgeManager } from '../lib/badge';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CELL_SIZE = SCREEN_WIDTH / 3;
+
+function ProfileSkeleton() {
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.8,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+
+    return () => {
+      pulse.stop();
+    };
+  }, [pulseAnim]);
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        {/* Avatar */}
+        <Animated.View style={[styles.avatarPlaceholder, { opacity: pulseAnim }]} />
+        
+        {/* Username */}
+        <Animated.View style={[styles.skeletonUsername, { opacity: pulseAnim }]} />
+
+        {/* Matricule */}
+        <Animated.View style={[styles.skeletonMatricule, { opacity: pulseAnim }]} />
+
+        {/* Bio */}
+        <Animated.View style={[styles.skeletonBio, { opacity: pulseAnim }]} />
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCol}>
+            <Animated.View style={[styles.skeletonStatNum, { opacity: pulseAnim }]} />
+            <Animated.View style={[styles.skeletonStatLabel, { opacity: pulseAnim }]} />
+          </View>
+          <View style={styles.statCol}>
+            <Animated.View style={[styles.skeletonStatNum, { opacity: pulseAnim }]} />
+            <Animated.View style={[styles.skeletonStatLabel, { opacity: pulseAnim }]} />
+          </View>
+          <View style={styles.statCol}>
+            <Animated.View style={[styles.skeletonStatNum, { opacity: pulseAnim }]} />
+            <Animated.View style={[styles.skeletonStatLabel, { opacity: pulseAnim }]} />
+          </View>
+        </View>
+
+        {/* Action Button */}
+        <View style={styles.actionsContainer}>
+          <Animated.View style={[styles.skeletonButton, { opacity: pulseAnim }]} />
+        </View>
+      </View>
+
+      {/* Grid below header */}
+      <SkeletonGrid />
+    </SafeAreaView>
+  );
+}
 
 export default function ProfileScreen() {
   const route = useRoute<any>();
@@ -27,13 +98,7 @@ export default function ProfileScreen() {
   }, []);
 
   if (!paramUserId && !authUid) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <Text style={{color: 'white'}}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <ProfileSkeleton />;
   }
 
   const targetUserId = paramUserId || authUid;
@@ -57,6 +122,22 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
+  // Mute preference syncing for modal video playback
+  const [isMuted, setIsMuted] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem('ubuzz_mute_preference').then((val) => {
+      if (val !== null) setIsMuted(val === 'true');
+    });
+  }, [selectedVideo]);
+
+  const handleMuteToggle = useCallback(() => {
+    setIsMuted((m) => {
+      const next = !m;
+      AsyncStorage.setItem('ubuzz_mute_preference', String(next));
+      return next;
+    });
+  }, []);
+
   // Re-fetch profile + videos every time this screen gains focus.
   // Fixes stale data when returning after an upload or interaction.
   useFocusEffect(
@@ -66,14 +147,17 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
     }, [refreshProfile, refreshFollow])
   );
 
+  // Reset notification badge on focus if this is our own profile
+  useFocusEffect(
+    useCallback(() => {
+      if (isOwnProfile) {
+        badgeManager.reset();
+      }
+    }, [isOwnProfile])
+  );
+
   if (profileLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <Text style={{color: 'white'}}>Loading profile...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (profileError || !profile) {
@@ -256,7 +340,31 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
         if (error) throw error;
       } else {
         const { error } = await supabase.from('likes').insert({ user_id: authUid, video_id: videoId });
-        if (error) throw error;
+        if (error) {
+          // Gracefully ignore unique constraint violations (already liked)
+          if (error.code === '23505') {
+            console.log('[ProfileScreen] Duplicate like ignored gracefully');
+          } else {
+            throw error;
+          }
+        } else {
+          // Broadcast like notification to video owner if not liking own video
+          if (selectedVideo && authUid !== selectedVideo.user_id) {
+            const notifChannel = supabase.channel(`channel-notif-likes-${selectedVideo.user_id}`);
+            notifChannel
+              .send({
+                type: 'broadcast',
+                event: 'like',
+                payload: { userId: authUid },
+              })
+              .then(() => {
+                supabase.removeChannel(notifChannel);
+              })
+              .catch((err) => {
+                console.error('[ProfileScreen] Error sending like broadcast:', err);
+              });
+          }
+        }
       }
     } catch (e) {
       // Revert optimistic on error
@@ -375,15 +483,7 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
 
   const renderEmptyState = () => {
     if (videosLoading) {
-      return (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: 9 }).map((_, i) => (
-            <View key={i} style={styles.cellContainer}>
-              <View style={styles.thumbnailPlaceholder} />
-            </View>
-          ))}
-        </View>
-      );
+      return <SkeletonGrid />;
     }
 
     return (
@@ -432,6 +532,8 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
                 onComment={() => { console.log('comment placeholder') }}
                 onProfile={() => { console.log('profile placeholder') }}
                 onDelete={() => { console.log('delete placeholder') }}
+                isMuted={isMuted}
+                onMuteToggle={handleMuteToggle}
               />
               <TouchableOpacity 
                 style={styles.closeModalButton} 
@@ -672,5 +774,46 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 4,
+  },
+  skeletonUsername: {
+    width: 120,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#1a1a1a',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  skeletonMatricule: {
+    width: 80,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#1a1a1a',
+    marginBottom: 12,
+  },
+  skeletonBio: {
+    width: '60%',
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#1a1a1a',
+    marginBottom: 16,
+  },
+  skeletonStatNum: {
+    width: 30,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#1a1a1a',
+    marginBottom: 4,
+  },
+  skeletonStatLabel: {
+    width: 50,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+  },
+  skeletonButton: {
+    width: '100%',
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
   },
 });

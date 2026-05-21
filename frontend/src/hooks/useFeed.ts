@@ -228,8 +228,9 @@ export function useFeed(feedType: FeedType): UseFeedResult {
   // decrements are therefore handled inside CommentsSheet, which already receives
   // filtered DELETE events and has videoId in scope.
   useEffect(() => {
+    const uniqueName = `global_feed_comments_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const channel = supabase
-      .channel('global_feed_comments')
+      .channel(uniqueName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'comments' },

@@ -2,8 +2,9 @@
 
 ## Current Status
 
-**Active Phase:** Phase 5 — Profile Screen (fully complete, including Profile Hardening & Recovery)
-**Last Updated:** 2026-05-20
+**Active Phase:** Phase 7 — Polish + Production Hardening [DONE]
+**Last Updated:** 2026-05-21
+**MVP Status:** READY FOR PRODUCTION ✓
 
 ---
 
@@ -155,19 +156,17 @@ Completed items:
 
 ---
 
-### [IN PROGRESS] Phase 7 — Polish + Production Hardening
+### [DONE] Phase 7 — Polish + Production Hardening
 
-Scope:
-- src/components/SkeletonCard.tsx
-- src/components/SkeletonGrid.tsx
-- src/components/ReportSheet.tsx
-- src/screens/SearchScreen.tsx (full implementation)
-- Double-tap to like with heart animation
-- Mute/unmute with AsyncStorage persistence
-- Buffering indicator on video player
-- In-app notification badge on Profile tab
-- Security hardening (sanitization, 401 handler, RLS audit)
-- Final navigation audit
+Completed items:
+- [DONE] Video duration limit removed and size raised to 70MB (Section 1)
+- [DONE] 3-column skeleton grid matching profile cells & skeleton card layout (Section 2)
+- [DONE] Double-tap to like with heart animation & spam safeguards (Section 3)
+- [DONE] Mute/unmute state lifted to parent level for instant AsyncStorage sync, and conditional active video display (Section 4)
+- [DONE] In-app notification badge on Profile tab for real-time likes/comments (Section 5)
+- [DONE] Fully functional Search Screen with request-ID race safety and result navigation (Section 6)
+- [DONE] Security Hardening including inputs sanitization, RLS audit, rates checking (Section 7)
+- [DONE] Final navigation audit, upload throttle lock, on-success redirection to AppTabs (Section 8)
 
 ---
 

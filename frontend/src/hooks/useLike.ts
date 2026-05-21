@@ -6,7 +6,7 @@ import { FeedVideo } from './useFeed';
 type SetVideos = React.Dispatch<React.SetStateAction<FeedVideo[]>>;
 
 interface UseLikeResult {
-  toggleLike: (videoId: string, currentIsLiked: boolean) => Promise<void>;
+  toggleLike: (videoId: string, currentIsLiked: boolean, videoOwnerId?: string) => Promise<void>;
 }
 
 /**
@@ -17,7 +17,7 @@ interface UseLikeResult {
  */
 export function useLike(setVideos: SetVideos): UseLikeResult {
   const toggleLike = useCallback(
-    async (videoId: string, currentIsLiked: boolean) => {
+    async (videoId: string, currentIsLiked: boolean, videoOwnerId?: string) => {
       // ── Step 1: Optimistic update ─────────────────────────────────────────
       const applyDelta = (liked: boolean, delta: number) => {
         setVideos((prev) =>
@@ -55,7 +55,31 @@ export function useLike(setVideos: SetVideos): UseLikeResult {
             .from('likes')
             .insert({ user_id: user.id, video_id: videoId });
 
-          if (error) throw error;
+          if (error) {
+            // Gracefully ignore unique constraint violations (already liked)
+            if (error.code === '23505') {
+              console.log('[useLike] Duplicate like ignored gracefully');
+            } else {
+              throw error;
+            }
+          } else {
+            // Broadcast like notification to video owner if not liking own video
+            if (videoOwnerId && user.id !== videoOwnerId) {
+              const notifChannel = supabase.channel(`channel-notif-likes-${videoOwnerId}`);
+              notifChannel
+                .send({
+                  type: 'broadcast',
+                  event: 'like',
+                  payload: { userId: user.id },
+                })
+                .then(() => {
+                  supabase.removeChannel(notifChannel);
+                })
+                .catch((err) => {
+                  console.error('[useLike] Error sending like broadcast:', err);
+                });
+            }
+          }
         }
       } catch (e: unknown) {
         // ── Step 3: Revert optimistic update on error ──────────────────────
@@ -72,3 +96,4 @@ export function useLike(setVideos: SetVideos): UseLikeResult {
 
   return { toggleLike };
 }
+

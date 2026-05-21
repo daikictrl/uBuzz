@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import supabase from '../../supabase/client';
+import { sanitizeText } from '../lib/validation';
 
 interface EditProfileSheetProps {
   visible: boolean;
@@ -105,9 +106,10 @@ export default function EditProfileSheet({
 
   const handleSave = async () => {
     Keyboard.dismiss();
-    const cleanUsername = username.trim().toLowerCase();
+    const sanitizedUsername = sanitizeText(username.trim().toLowerCase(), 20);
+    const sanitizedBio = sanitizeText(bio.trim(), 100);
     
-    const isAvailable = await checkUsername(cleanUsername);
+    const isAvailable = await checkUsername(sanitizedUsername);
     if (!isAvailable) return;
 
     setSaveState('saving');
@@ -140,8 +142,8 @@ export default function EditProfileSheet({
       const { error: updateError } = await supabase
         .from('users') // Assuming table is users or profiles based on project struct
         .update({
-          username: cleanUsername,
-          bio: bio.trim(),
+          username: sanitizedUsername,
+          bio: sanitizedBio,
           avatar_url: finalAvatarUrl
         })
         .eq('id', currentUserId);
@@ -237,14 +239,18 @@ export default function EditProfileSheet({
                   <TextInput
                     style={[styles.input, styles.bioInput]}
                     value={bio}
-                    onChangeText={setBio}
-                    maxLength={150}
+                    onChangeText={(t) => {
+                      if (t.length <= 100) {
+                        setBio(t);
+                      }
+                    }}
+                    maxLength={100}
                     placeholder="Tell us about yourself"
                     placeholderTextColor="#666"
                     multiline
                     editable={!isBusy}
                   />
-                  <Text style={styles.charCount}>{bio.length}/150</Text>
+                  <Text style={styles.charCount}>{bio.length}/100</Text>
                 </View>
               </View>
 

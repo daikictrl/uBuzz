@@ -37,3 +37,11 @@ export function isValidUsername(value: string): { valid: boolean; error: string 
   
   return { valid: true, error: "" };
 }
+
+export function sanitizeText(text: string, maxLength: number): string {
+  if (!text) return '';
+  // Strip HTML tags using regex
+  const clean = text.replace(/<\/?[^>]+(>|$)/g, '');
+  // Enforce max length
+  return clean.slice(0, maxLength);
+}

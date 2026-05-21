@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused, useFocusEffect, useNavigation } from '@react-navigation/native';
 import supabase from '../../supabase/client';
@@ -17,28 +18,11 @@ import { useFeed, FeedType, FeedVideo } from '../hooks/useFeed';
 import { useLike } from '../hooks/useLike';
 import VideoCard from '../components/VideoCard';
 import CommentsSheet from '../components/CommentsSheet';
+import SkeletonCard from '../components/SkeletonCard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ─── Skeleton placeholder (Phase 7 will replace with animated version) ────────
-
-function SkeletonCard() {
-  return (
-    <View style={[styles.card, { backgroundColor: '#1a1a1a', justifyContent: 'flex-end' }]}>
-      {/* Simulated avatar + text block */}
-      <View style={{ padding: 16, gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#2e2e2e' }} />
-          <View style={{ width: 100, height: 14, borderRadius: 7, backgroundColor: '#2e2e2e' }} />
-        </View>
-        <View style={{ width: '80%', height: 12, borderRadius: 6, backgroundColor: '#2e2e2e' }} />
-        <View style={{ width: '60%', height: 12, borderRadius: 6, backgroundColor: '#2e2e2e' }} />
-      </View>
-    </View>
-  );
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -74,6 +58,22 @@ export default function HomeScreen() {
 
   // Comments Sheet state
   const [activeCommentVideo, setActiveCommentVideo] = useState<FeedVideo | null>(null);
+
+  // Global mute preference (Shared with all VideoCards for instant synchronization)
+  const [isMuted, setIsMuted] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem('ubuzz_mute_preference').then((val) => {
+      if (val !== null) setIsMuted(val === 'true');
+    });
+  }, []);
+
+  const handleMuteToggle = useCallback(() => {
+    setIsMuted((m) => {
+      const next = !m;
+      AsyncStorage.setItem('ubuzz_mute_preference', String(next));
+      return next;
+    });
+  }, []);
 
   // Active video tracking — use ref to avoid re-render on every scroll
   const activeIndexRef = useRef<number>(0);
@@ -151,9 +151,11 @@ export default function HomeScreen() {
         onComment={handleComment}
         onProfile={handleProfile}
         onDelete={handleDelete}
+        isMuted={isMuted}
+        onMuteToggle={handleMuteToggle}
       />
     ),
-    [effectiveActiveIndex, currentUserId, toggleLike, handleComment, handleProfile, handleDelete],
+    [effectiveActiveIndex, currentUserId, toggleLike, handleComment, handleProfile, handleDelete, isMuted, handleMuteToggle],
   );
 
   const keyExtractor = useCallback((item: FeedVideo) => item.id, []);
@@ -268,6 +270,7 @@ export default function HomeScreen() {
         onClose={() => setActiveCommentVideo(null)}
         videoId={activeCommentVideo?.id || null}
         currentUserId={currentUserId}
+        videoOwnerId={activeCommentVideo?.user_id || null}
         onProfile={handleProfile}
         markCommentAsLocallyDeleted={markCommentAsLocallyDeleted}
         clearAllLocallyDeletedComments={clearAllLocallyDeletedComments}

@@ -20,6 +20,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../../supabase/client';
+import { sanitizeText } from '../lib/validation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ interface Props {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_HEIGHT = (SCREEN_WIDTH - 32) * (9 / 16); // 16:9
 const MAX_CAPTION_LENGTH = 200;
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_SIZE_BYTES = 70 * 1024 * 1024; // 70 MB
 const RATE_LIMIT_KEY = 'ubuzz_upload_history';
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -153,7 +154,6 @@ export default function UploadScreen({ navigation }: Props) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsEditing: true,
-      videoMaxDuration: 60,
       quality: 0.5,
     });
 
@@ -194,7 +194,10 @@ export default function UploadScreen({ navigation }: Props) {
     try {
       const info = await FileSystem.getInfoAsync(videoUri);
       if ('size' in info && info.size && info.size > MAX_FILE_SIZE_BYTES) {
-        Alert.alert('File too large', 'Video is too large. Maximum size is 50MB.');
+        Alert.alert(
+          'File too large',
+          'Video is too large. Maximum size is 70MB.\nPlease choose a shorter or lower quality video.'
+        );
         return;
       }
     } catch {
@@ -400,7 +403,7 @@ export default function UploadScreen({ navigation }: Props) {
         user_id: user.id,
         video_url: videoPublic.publicUrl,
         thumbnail_url: publicThumbUrl,
-        caption: caption.trim(),
+        caption: sanitizeText(caption.trim(), 200),
       });
 
       if (insertError) throw new Error(`Save failed: ${insertError.message}`);
@@ -415,7 +418,7 @@ export default function UploadScreen({ navigation }: Props) {
       Alert.alert('Posted!', 'Your video is live.', [
         {
           text: 'OK',
-          onPress: () => navigation.goBack(),
+          onPress: () => navigation.navigate('AppTabs'),
         },
       ]);
     } catch (e: unknown) {
@@ -554,7 +557,7 @@ export default function UploadScreen({ navigation }: Props) {
                 <Ionicons name="cloud-upload-outline" size={36} color={C.primary} />
               </View>
               <Text style={styles.emptyPreviewTitle}>Tap to choose a video</Text>
-              <Text style={styles.emptyPreviewSub}>Max 60 seconds · 50 MB limit</Text>
+              <Text style={styles.emptyPreviewSub}>70 MB limit</Text>
             </View>
           )}
         </TouchableOpacity>

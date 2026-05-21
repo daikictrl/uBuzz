@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,13 @@ import {
   ActivityIndicator,
   Dimensions,
   AppState,
+  Animated,
+  GestureResponderEvent,
+  ScrollView,
 } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import supabase from '../../supabase/client';
@@ -23,7 +25,6 @@ import { FeedVideo } from '../hooks/useFeed';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const MUTE_KEY = 'ubuzz_mute_preference';
 
 // Design tokens (Nocturnal Pulse)
 const COLORS = {
@@ -46,10 +47,12 @@ export interface VideoCardProps {
   video: FeedVideo;
   isActive: boolean;
   currentUserId: string | null;
-  toggleLike: (videoId: string, currentIsLiked: boolean) => Promise<void>;
+  toggleLike: (videoId: string, currentIsLiked: boolean, videoOwnerId: string) => Promise<void>;
   onComment: (video: FeedVideo) => void;
   onProfile: (userId: string) => void;
   onDelete: (videoId: string) => void;
+  isMuted: boolean;
+  onMuteToggle: () => void;
   singleVideoMode?: boolean;
 }
 
@@ -59,6 +62,64 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+interface HeartBurstProps {
+  x: number;
+  y: number;
+  onFinish: () => void;
+}
+
+function HeartBurst({ x, y, onFinish }: HeartBurstProps) {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.parallel([
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.3,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1.0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(() => {
+      onFinish();
+    });
+
+    return () => {
+      animation.stop();
+    };
+  }, [scaleAnim, opacityAnim, onFinish]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.heartOverlay,
+        {
+          left: x - 30,
+          top: y - 30,
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        },
+      ]}
+    >
+      <Ionicons name="heart" size={60} color="#EF4444" />
+    </Animated.View>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -71,20 +132,89 @@ export default function VideoCard({
   onComment,
   onProfile,
   onDelete,
+  isMuted,
+  onMuteToggle,
   singleVideoMode = false,
 }: VideoCardProps) {
   // Playback UI state
   const [isPaused, setIsPaused] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   // Caption expand
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [captionTruncated, setCaptionTruncated] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const canExpandRef = useRef(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Track previous video ID to reset state synchronously on change (avoiding layout race conditions)
+  const [prevVideoId, setPrevVideoId] = useState(video.id);
+  
+  // Local mute override
+  const [localMuted, setLocalMuted] = useState(isMuted);
+  const userToggledRef = useRef(false);
+
+  // Sync with global isMuted prop only if the user hasn't manually toggled it on this card
+  useEffect(() => {
+    if (!userToggledRef.current) {
+      setLocalMuted(isMuted);
+    }
+  }, [isMuted]);
+
+  const handleMute = useCallback(() => {
+    userToggledRef.current = true;
+    setLocalMuted((prev) => !prev);
+  }, []);
+
+  if (video.id !== prevVideoId) {
+    setPrevVideoId(video.id);
+    setCaptionExpanded(false);
+    setCanExpand(false);
+    canExpandRef.current = false;
+    userToggledRef.current = false;
+    setLocalMuted(isMuted);
+  }
+
+  // Reset caption expansion when cell scrolls out of active view
+  useEffect(() => {
+    if (!isActive) {
+      setCaptionExpanded(false);
+    }
+  }, [isActive]);
+
+  // Programmatic scroll-to-top reset when caption expands
+  useEffect(() => {
+    if (captionExpanded) {
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [captionExpanded]);
+
+  // Double tap to like state & refs
+  const [hearts, setHearts] = useState<{ id: string; x: number; y: number }[]>([]);
+  const lastTapRef = useRef<number>(0);
+  const singleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLikeMutatingRef = useRef<boolean>(false);
+
+  // Track local liked state synchronously to guard against rapid tapping
+  const localIsLikedRef = useRef(video.is_liked);
+  useEffect(() => {
+    localIsLikedRef.current = video.is_liked;
+  }, [video.is_liked]);
+
+  // Clean up single tap timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // ── expo-video player ───────────────────────────────────────────────────────
   const player = useVideoPlayer({ uri: video.video_url }, (p) => {
     p.loop = true;
-    p.muted = false; // will be synced by effect once AsyncStorage loads
+    p.muted = localMuted;
   });
 
   // Status event — drives buffering spinner and error state
@@ -93,13 +223,6 @@ export default function VideoCard({
   });
   const isBuffering = playerStatus === 'loading';
   const hasError    = playerStatus === 'error';
-
-  // ── Load mute preference from storage on mount ──────────────────────────────
-  useEffect(() => {
-    AsyncStorage.getItem(MUTE_KEY).then((val) => {
-      if (val !== null) setIsMuted(val === 'true');
-    });
-  }, []);
 
   // ── Play / pause controlled by isActive + user tap ─────────────────────────
   useEffect(() => {
@@ -137,8 +260,8 @@ export default function VideoCard({
 
   // ── Mute sync ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    player.muted = isMuted;
-  }, [isMuted, player]);
+    player.muted = localMuted;
+  }, [localMuted, player]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -146,13 +269,52 @@ export default function VideoCard({
     setIsPaused((p) => !p);
   }, []);
 
-  const handleMuteToggle = useCallback(() => {
-    setIsMuted((m) => {
-      const next = !m;
-      AsyncStorage.setItem(MUTE_KEY, String(next));
-      return next;
-    });
-  }, []);
+  const handlePress = useCallback((e: GestureResponderEvent) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Clear pending single-tap play/pause timeout
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+        singleTapTimeoutRef.current = null;
+      }
+
+      // Check synchronous ref to prevent duplicate/accidental actions
+      if (localIsLikedRef.current) {
+        lastTapRef.current = now;
+        return;
+      }
+
+      // Optimistically lock the like action synchronously
+      localIsLikedRef.current = true;
+
+      // Normalize touch coordinates relative to the tapped VideoCard container
+      const { locationX, locationY } = e.nativeEvent;
+
+      // Add a heart burst
+      const heartId = `${now}-${Math.random()}`;
+      setHearts((prev) => [...prev, { id: heartId, x: locationX, y: locationY }]);
+
+      // Trigger toggleLike if not already mutating
+      if (!isLikeMutatingRef.current) {
+        isLikeMutatingRef.current = true;
+        toggleLike(video.id, false, video.user_id).finally(() => {
+          isLikeMutatingRef.current = false;
+        });
+      }
+    } else {
+      // Potential single tap: wait 250ms before play/pause toggle
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+      }
+      singleTapTimeoutRef.current = setTimeout(() => {
+        singleTapTimeoutRef.current = null;
+        handleVideoPress();
+      }, 250);
+    }
+    lastTapRef.current = now;
+  }, [video.id, toggleLike, handleVideoPress]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -228,7 +390,7 @@ export default function VideoCard({
   return (
     <View style={styles.container}>
       {/* ── Video Player ── */}
-      <TouchableWithoutFeedback onPress={handleVideoPress} onLongPress={handleLongPress}>
+      <TouchableWithoutFeedback onPress={handlePress} onLongPress={handleLongPress}>
         <View style={styles.videoWrapper}>
           {/* Thumbnail shown as background while video loads (replaces expo-av usePoster) */}
           {video.thumbnail_url && (
@@ -268,6 +430,18 @@ export default function VideoCard({
               <Ionicons name="play" size={64} color="rgba(255,255,255,0.7)" />
             </View>
           )}
+
+          {/* Double Tap Hearts Overlay */}
+          {hearts.map((h) => (
+            <HeartBurst
+              key={h.id}
+              x={h.x}
+              y={h.y}
+              onFinish={() => {
+                setHearts((prev) => prev.filter((item) => item.id !== h.id));
+              }}
+            />
+          ))}
         </View>
       </TouchableWithoutFeedback>
 
@@ -279,20 +453,23 @@ export default function VideoCard({
       />
 
       {/* ── Mute button — top right ── */}
-      <TouchableOpacity style={styles.muteButton} onPress={handleMuteToggle}>
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={20}
-          color="#FFFFFF"
-        />
-      </TouchableOpacity>
+      {/* ── Mute button — top right ── */}
+      {isActive && (
+        <TouchableOpacity style={styles.muteButton} onPress={handleMute}>
+          <Ionicons
+            name={localMuted ? 'volume-mute' : 'volume-high'}
+            size={20}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+      )}
 
       {/* ── Action buttons — bottom right ── */}
       <View style={styles.actionsColumn}>
         {/* Like */}
         <TouchableOpacity
           style={styles.actionItem}
-          onPress={() => toggleLike(video.id, video.is_liked)}
+          onPress={() => toggleLike(video.id, video.is_liked, video.user_id)}
           activeOpacity={0.7}
         >
           <Ionicons
@@ -325,6 +502,24 @@ export default function VideoCard({
 
       {/* ── Info overlay — bottom left ── */}
       <View style={styles.infoArea}>
+        {/* Hidden text node to measure lines for expansion (only when collapsed) */}
+        {video.caption && !captionExpanded && (
+          <Text
+            key={`hidden-${video.id}`}
+            style={[styles.captionText, styles.hiddenText]}
+            pointerEvents="none"
+            onTextLayout={(e) => {
+              const nextCanExpand = e.nativeEvent.lines.length > 1;
+              if (nextCanExpand !== canExpandRef.current) {
+                canExpandRef.current = nextCanExpand;
+                setCanExpand(nextCanExpand);
+              }
+            }}
+          >
+            {video.caption}
+          </Text>
+        )}
+
         {/* Avatar + username row */}
         <TouchableOpacity
           style={styles.userRow}
@@ -347,22 +542,46 @@ export default function VideoCard({
 
         {/* Caption */}
         {video.caption ? (
-          <View style={styles.captionRow}>
-            <Text
-              style={styles.captionText}
-              numberOfLines={captionExpanded ? undefined : 2}
-              onTextLayout={(e) => {
-                if (!captionExpanded) {
-                  setCaptionTruncated(e.nativeEvent.lines.length > 2);
-                }
-              }}
-            >
-              {video.caption}
-            </Text>
-            {captionTruncated && !captionExpanded && (
-              <TouchableOpacity onPress={() => setCaptionExpanded(true)}>
-                <Text style={styles.moreLink}>...more</Text>
-              </TouchableOpacity>
+          <View style={styles.captionContainer}>
+            {captionExpanded ? (
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.captionScrollView}
+                contentContainerStyle={styles.captionScrollContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={false}
+                overScrollMode="never"
+              >
+                <Text style={styles.captionText}>
+                  {video.caption}
+                  {'  '}
+                  <Text
+                    style={styles.moreLink}
+                    onPress={() => setCaptionExpanded(false)}
+                  >
+                    less
+                  </Text>
+                </Text>
+              </ScrollView>
+            ) : (
+              <View>
+                <Text 
+                  style={styles.captionText} 
+                  numberOfLines={1} 
+                  ellipsizeMode="tail"
+                >
+                  {video.caption}
+                </Text>
+                {canExpand && (
+                  <TouchableOpacity 
+                    onPress={() => setCaptionExpanded(true)}
+                    style={styles.moreTouchTarget}
+                  >
+                    <Text style={styles.moreLink}>more</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </View>
         ) : null}
@@ -434,9 +653,12 @@ const styles = StyleSheet.create({
   // ── Info area ──
   infoArea: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 50,
     left: 12,
     right: 80,
+    maxHeight: SCREEN_HEIGHT * 0.5,
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
   },
   userRow: {
     flexDirection: 'row',
@@ -461,8 +683,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  captionRow: {
-    marginLeft: 2,
+  captionContainer: {
+    flexShrink: 1,
+  },
+  captionScrollView: {
+    flexShrink: 1,
+  },
+  captionScrollContent: {
+    flexGrow: 1,
   },
   captionText: {
     color: COLORS.caption,
@@ -470,9 +698,29 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   moreLink: {
-    color: 'rgba(255,255,255,0.65)',
+    color: '#8B5CF6',
     fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
+    fontWeight: '700',
+  },
+  moreTouchTarget: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  hiddenText: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    opacity: 0.01,
+    height: 1,
+    overflow: 'hidden',
+  },
+  heartOverlay: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
   },
 });

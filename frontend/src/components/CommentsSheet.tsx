@@ -19,6 +19,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import supabase from '../../supabase/client';
+import { sanitizeText } from '../lib/validation';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -40,6 +41,7 @@ export interface CommentsSheetProps {
   onClose: () => void;
   videoId: string | null;
   currentUserId: string | null;
+  videoOwnerId?: string | null;
   onProfile: (userId: string) => void;
   markCommentAsLocallyDeleted: (commentId: string) => void;
   clearAllLocallyDeletedComments: () => void;
@@ -55,6 +57,7 @@ export default function CommentsSheet({
   onClose,
   videoId,
   currentUserId,
+  videoOwnerId,
   onProfile,
   markCommentAsLocallyDeleted,
   clearAllLocallyDeletedComments,
@@ -151,8 +154,9 @@ export default function CommentsSheet({
   useEffect(() => {
     if (!visible || !videoId) return;
 
+    const uniqueName = `comments_${videoId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const channel = supabase
-      .channel(`comments_${videoId}`)
+      .channel(uniqueName)
       .on(
         'postgres_changes',
         {
@@ -217,7 +221,7 @@ export default function CommentsSheet({
 
   // ── Handlers ──
   const handleSend = async () => {
-    const text = inputText.trim();
+    const text = sanitizeText(inputText.trim(), 500);
     if (!text || !videoId || !currentUserId) return;
 
     setSubmitting(true);
@@ -232,6 +236,23 @@ export default function CommentsSheet({
 
       if (error) throw error;
       
+      // Broadcast comment notification to video owner if not commenting on own video
+      if (videoOwnerId && currentUserId && videoOwnerId !== currentUserId) {
+        const notifChannel = supabase.channel(`channel-notif-comments-${videoOwnerId}`);
+        notifChannel
+          .send({
+            type: 'broadcast',
+            event: 'comment',
+            payload: { userId: currentUserId },
+          })
+          .then(() => {
+            supabase.removeChannel(notifChannel);
+          })
+          .catch((err) => {
+            console.error('[CommentsSheet] Error sending comment broadcast:', err);
+          });
+      }
+
       // Note: We don't manually update state here because the Realtime 
       // subscription will catch the INSERT and update the list.
       setInputText('');
@@ -397,7 +418,7 @@ export default function CommentsSheet({
             placeholderTextColor="rgba(255,255,255,0.4)"
             value={inputText}
             onChangeText={setInputText}
-            maxLength={250}
+            maxLength={500}
             multiline
             editable={!submitting}
           />
