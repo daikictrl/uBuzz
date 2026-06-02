@@ -22,6 +22,25 @@ export function useProfileVideos(userId: string, profile: ProfileData | null) {
 
       if (fetchError) throw fetchError;
 
+      // Fetch actual comment counts for all videos in parallel
+      const videoIds = (data || []).map(v => v.id);
+      const commentCounts: Record<string, number> = {};
+
+      if (videoIds.length > 0) {
+        // Batch fetch comment counts for all videos
+        const { data: countData, error: countError } = await supabase
+          .from('comments')
+          .select('video_id', { count: 'exact', head: false })
+          .in('video_id', videoIds);
+
+        if (!countError && countData) {
+          // Count occurrences per video_id
+          for (const row of countData) {
+            commentCounts[row.video_id] = (commentCounts[row.video_id] || 0) + 1;
+          }
+        }
+      }
+
       const feedVideos: FeedVideo[] = (data || []).map(v => ({
         id: v.id,
         user_id: v.user_id,
@@ -32,7 +51,7 @@ export function useProfileVideos(userId: string, profile: ProfileData | null) {
         username: profile.username,
         avatar_url: profile.avatar_url,
         like_count: 0,
-        comment_count: 0,
+        comment_count: commentCounts[v.id] || 0,
         is_liked: false,
       }));
 
@@ -49,5 +68,5 @@ export function useProfileVideos(userId: string, profile: ProfileData | null) {
     fetchVideos();
   }, [fetchVideos]);
 
-  return { videos, loading, error, refresh: fetchVideos };
+  return { videos, setVideos, loading, error, refresh: fetchVideos };
 }

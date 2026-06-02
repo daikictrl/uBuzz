@@ -14,6 +14,7 @@ import EditProfileSheet from '../components/EditProfileSheet';
 import { FeedVideo } from '../hooks/useFeed';
 import SkeletonGrid from '../components/SkeletonGrid';
 import { badgeManager } from '../lib/badge';
+import CommentsSheet from '../components/CommentsSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CELL_SIZE = SCREEN_WIDTH / 3;
@@ -107,8 +108,9 @@ export default function ProfileScreen() {
 }
 
 function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isOwnProfile: boolean, authUid: string | null }) {
+  const navigation = useNavigation<any>();
   const { profile, loading: profileLoading, error: profileError, refresh: refreshProfile } = useProfile(userId);
-  const { videos, loading: videosLoading, refresh: refreshVideos } = useProfileVideos(userId, profile);
+  const { videos, setVideos, loading: videosLoading, refresh: refreshVideos } = useProfileVideos(userId, profile);
   const {
     isFollowing,
     followerCount,
@@ -118,6 +120,7 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
   } = useFollow(userId);
 
   const [selectedVideo, setSelectedVideo] = useState<FeedVideo | null>(null);
+  const [activeCommentVideo, setActiveCommentVideo] = useState<FeedVideo | null>(null);
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -137,6 +140,141 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
       return next;
     });
   }, []);
+
+  const locallyDeletedCommentIdsRef = useRef<Set<string>>(new Set());
+  const authUidRef = useRef(authUid);
+  authUidRef.current = authUid;
+
+  // ── Global Realtime Comments Subscription for Profile ──
+  // Uses a ref for authUid so the channel is created ONCE per userId and never torn down/re-created.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`comments_profile_${userId}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          const newComment = payload.new;
+          if (!newComment) return;
+
+          // If comment is from another user, increment the counter
+          if (newComment.user_id !== authUidRef.current) {
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === newComment.video_id
+                  ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
+                  : v
+              )
+            );
+            setSelectedVideo((prev) =>
+              prev && prev.id === newComment.video_id
+                ? { ...prev, comment_count: Number(prev.comment_count || 0) + 1 }
+                : prev
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          const oldComment = payload.old;
+          if (!oldComment) return;
+
+          const commentId = oldComment.id;
+          const videoId = oldComment.video_id;
+
+          if (!videoId) return;
+
+          // Check if this was a local deletion
+          if (locallyDeletedCommentIdsRef.current.has(commentId)) {
+            locallyDeletedCommentIdsRef.current.delete(commentId);
+          } else {
+            // External deletion, decrement count
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === videoId
+                  ? { ...v, comment_count: Math.max(0, Number(v.comment_count || 0) - 1) }
+                  : v
+              )
+            );
+            setSelectedVideo((prev) =>
+              prev && prev.id === videoId
+                ? { ...prev, comment_count: Math.max(0, Number(prev.comment_count || 0) - 1) }
+                : prev
+            );
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[ProfileScreen] Global comments channel status for ${userId}:`, status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  const optimisticAddCommentCount = useCallback((videoId: string) => {
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId ? { ...v, comment_count: Number(v.comment_count || 0) + 1 } : v
+      )
+    );
+    setSelectedVideo((prev) =>
+      prev && prev.id === videoId
+        ? { ...prev, comment_count: Number(prev.comment_count || 0) + 1 }
+        : prev
+    );
+  }, [setVideos]);
+
+  const optimisticDeleteCommentCount = useCallback((videoId: string, commentId?: string) => {
+    if (commentId) {
+      locallyDeletedCommentIdsRef.current.add(commentId);
+    }
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId ? { ...v, comment_count: Math.max(0, Number(v.comment_count || 0) - 1) } : v
+      )
+    );
+    setSelectedVideo((prev) =>
+      prev && prev.id === videoId
+        ? { ...prev, comment_count: Math.max(0, Number(prev.comment_count || 0) - 1) }
+        : prev
+    );
+  }, [setVideos]);
+
+  const optimisticRestoreCommentCount = useCallback((videoId: string, commentId?: string) => {
+    if (commentId) {
+      locallyDeletedCommentIdsRef.current.delete(commentId);
+    }
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId ? { ...v, comment_count: Number(v.comment_count || 0) + 1 } : v
+      )
+    );
+    setSelectedVideo((prev) =>
+      prev && prev.id === videoId
+        ? { ...prev, comment_count: Number(prev.comment_count || 0) + 1 }
+        : prev
+    );
+  }, [setVideos]);
+
+  const handleDelete = useCallback(
+    (videoId: string) => {
+      setVideos((prev) => prev.filter((v) => v.id !== videoId));
+      setSelectedVideo(null);
+    },
+    [setVideos],
+  );
 
   // Re-fetch profile + videos every time this screen gains focus.
   // Fixes stale data when returning after an upload or interaction.
@@ -529,9 +667,12 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
                 currentUserId={authUid || userId}
                 singleVideoMode={true}
                 toggleLike={handleToggleLike}
-                onComment={() => { console.log('comment placeholder') }}
-                onProfile={() => { console.log('profile placeholder') }}
-                onDelete={() => { console.log('delete placeholder') }}
+                onComment={setActiveCommentVideo}
+                onProfile={(authorId) => {
+                  setSelectedVideo(null);
+                  navigation.navigate('Profile', { userId: authorId });
+                }}
+                onDelete={handleDelete}
                 isMuted={isMuted}
                 onMuteToggle={handleMuteToggle}
               />
@@ -558,6 +699,23 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
           onProfileUpdated={refreshProfile}
         />
       )}
+
+      {/* Comments Sheet */}
+      <CommentsSheet
+        visible={!!activeCommentVideo}
+        onClose={() => setActiveCommentVideo(null)}
+        videoId={activeCommentVideo?.id || null}
+        currentUserId={authUid}
+        videoOwnerId={activeCommentVideo?.user_id || null}
+        onProfile={(authorId) => {
+          setActiveCommentVideo(null);
+          setSelectedVideo(null);
+          navigation.navigate('Profile', { userId: authorId });
+        }}
+        optimisticAddCommentCount={optimisticAddCommentCount}
+        optimisticDeleteCommentCount={optimisticDeleteCommentCount}
+        optimisticRestoreCommentCount={optimisticRestoreCommentCount}
+      />
     </SafeAreaView>
   );
 }

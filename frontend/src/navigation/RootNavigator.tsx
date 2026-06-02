@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Session } from '@supabase/supabase-js';
 import { LinearGradient } from 'expo-linear-gradient';
 import supabase from '../../supabase/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import AuthScreen from '../screens/AuthScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -216,11 +217,17 @@ function AppTabs({ navigation }: { navigation: AppTabsNavigationProp }) {
 
 export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
+  const [passwordResetPending, setPasswordResetPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Unconditionally reset mute preference to false on app launch/startup
+    AsyncStorage.setItem('ubuzz_mute_preference', 'false').catch(() => {});
+
     // Initial session fetch
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending');
+      setPasswordResetPending(pending === 'true');
       setSession(s);
       setLoading(false);
     });
@@ -233,17 +240,24 @@ export default function RootNavigator() {
      */
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if ((event as string) === 'TOKEN_REFRESH_FAILED') {
         // Session expired / token could not be refreshed — clear session.
         // The navigator will redirect to AuthScreen automatically.
         setSession(null);
-        // Note: Showing an Alert here can conflict with React Native's render
-        // cycle. A toast / snackbar library is preferable in production, but
-        // logging is the minimum safe action here.
+        setPasswordResetPending(false);
         console.warn('[Auth] Token refresh failed — user signed out.');
         return;
       }
+
+      const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending');
+      setPasswordResetPending(pending === 'true');
+
+      if (newSession) {
+        // Reset mute preference to false on login/session acquisition
+        AsyncStorage.setItem('ubuzz_mute_preference', 'false').catch(() => {});
+      }
+
       setSession(newSession);
     });
 
@@ -317,7 +331,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {session ? (
+        {session && !passwordResetPending ? (
           <>
             <Stack.Screen name="AppTabs" component={AppTabs} />
             <Stack.Screen

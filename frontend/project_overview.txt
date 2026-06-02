@@ -1,0 +1,166 @@
+================================================================================
+                                U-BUZZ MOBILE APP
+                                PROJECT OVERVIEW
+================================================================================
+
+1. INTRODUCTION & PURPOSE
+--------------------------------------------------------------------------------
+U-Buzz is a campus-focused, short-form video sharing mobile application designed
+specifically for students. Think of it as a private campus version of TikTok or 
+Instagram Reels. It allows students within a university community to record, 
+upload, discover, and watch vertical full-screen videos, connect with peers, 
+and share campus moments. 
+
+
+2. DESIGN & FIRST IMPRESSIONS
+--------------------------------------------------------------------------------
+The app uses a premium, dark-themed aesthetic with vibrant accents (deep blues, 
+purples, and energetic pinks). 
+
+*   Glassmorphism: The interfaces feature modern, semi-transparent "glass-like" 
+    cards that overlay colorful gradient backgrounds, creating a polished, 
+    floating look.
+*   Smooth Layout Transitions: When loading contents, the app displays soft 
+    loading "skeletons" (grey placeholder shapes that pulse gently) instead of 
+    abrupt loading screens, making the app feel incredibly responsive.
+
+
+3. GETTING STARTED (SIGN-UP & LOGIN)
+--------------------------------------------------------------------------------
+To use the app, students must create a verified account:
+
+*   Form Information: Students sign up using their Full Name, a unique 
+    @username, their student Email, and a password.
+*   Matricule (Student ID Number): To ensure the community is restricted to 
+    real students, users must provide their student registration number 
+    (Matricule) during sign-up. 
+*   Privacy Protection (Masking): To protect student identity and data privacy, 
+    their student registration number is automatically masked when shown to 
+    other users (for example, "IU20241234" is displayed to others as "IU****34").
+*   Email Verification: After registering, the app sends a verification email. 
+    Users must confirm their email address before they can log in.
+*   Safe Auto-Logouts: If a student's session expires due to inactivity, the 
+    app securely logs them out and redirects them back to the login screen with 
+    a message, rather than crashing or freezing.
+
+
+4. NAVIGATION (THE BOTTOM TAB MENU)
+--------------------------------------------------------------------------------
+Navigation is simple and intuitive, utilizing a bottom menu bar with four slots:
+
+1.  Home Feed (House Icon): The main screen to view full-screen videos.
+2.  Search (Magnifying Glass Icon): The search screen to find other students.
+3.  Upload (Raised Purple "+" Button): A prominent button positioned in the 
+    middle of the bar that opens the camera/video selection screen.
+4.  Profile (Person Icon): The gateway to your own profile details, video grid, 
+    settings, and activity indicators.
+
+
+5. CORE FEATURES & FUNCTIONALITY
+--------------------------------------------------------------------------------
+
+A. THE HOME VIDEO FEED
+The primary screen where students watch vertical, full-screen videos. 
+*   Paging Control: Swiping up or down snaps perfectly to the next or previous 
+    video.
+*   Two Content Feeds:
+    *   "For You" Feed: Shows videos uploaded by any student on campus.
+    *   "Following" Feed: Shows videos exclusively from accounts that you follow.
+*   Smart Playback: Videos automatically play when visible and loop indefinitely. 
+    If you leave the screen (e.g. to search, open a sheet, or upload), the video 
+    automatically pauses to save your phone's battery and mobile data.
+*   Global Volume Sync (Mute Toggle): A volume icon sits in the top-right 
+    corner of the video player. Tapping it mutes or unmutes the audio. The app 
+    remembers this volume preference and applies it to every video you scroll 
+    to next.
+*   Smart Caption Expansion: Captions appear at the bottom-left. If a student 
+    writes a long caption, it is neatly truncated with a purple "more" link. 
+    Tapping "more" expands the caption in a scrollable, transparent container 
+    so you can read the whole text without covering the buttons. Tapping "less" 
+    collapses it back.
+*   Video Options: Pressing and holding on a video brings up options to report 
+    inappropriate content or delete the post (if it belongs to you).
+
+B. VIDEO INTERACTIONS & LIKES
+*   Double-Tap to Like: Tapping quickly twice anywhere on the video screen 
+    triggers a floating red "heart burst" animation at the tap location and 
+    likes the video.
+*   Action Sidebar: A vertical row of buttons on the right side of the screen:
+    *   Like (Heart Outline/Filled): Turns red and updates the total like count.
+    *   Comment (Speech Bubble): Opens a drawer to read or write comments.
+    *   Share (Arrow): Opens your phone's native sharing options to send a link 
+        to the video via WhatsApp, text, or social media.
+*   User Profile Link: Tapping the creator's profile picture or username 
+    navigates directly to their profile page.
+
+C. THE REAL-TIME COMMENT SECTION
+*   Sliding Sheet: Tapping the comment button slides up a panel from the 
+    bottom of the screen, keeping the video visible in the background.
+*   Real-Time Conversations: Using live network communication, new comments 
+    appear instantly the moment someone types them on their own phone—no 
+    refreshing needed.
+*   Easy Navigation: Tapping a commenter's picture or username slides the sheet 
+    away and opens their profile.
+*   Comment Deletion: You can press and hold on any comment you wrote to delete 
+    it. This immediately removes it from the list and decreases the comment 
+    counter.
+
+D. SEARCH & DIRECTORY
+*   Interactive Search Bar: Search for students by typing their name, @username, 
+    or student ID (Matricule).
+*   Visual Search Cards: Matching search results display the student's profile 
+    picture, @username, masked ID number, and biography.
+*   Quick Profile Access: Tapping on any student card navigates to their profile 
+    page.
+
+E. STUDENT PROFILES
+*   Detailed Info Banner: Displays the student's avatar, username, masked ID, 
+    bio, and key stats: the number of videos they have shared, follower count, 
+    and how many students they follow.
+*   Follow / Unfollow System: Tapping "Follow" subscribes to their posts. 
+    If you are already following them, tapping the button prompts a confirmation 
+    popup to prevent accidental unfollows.
+*   Personal Customization (For your own profile):
+    *   Edit Profile: Opens a drawer to write/change your biography, edit your 
+        username (checks if the username is available in real-time), and upload 
+        a new profile picture from your phone.
+    *   Logout: Securely signs you out.
+    *   Delete Account: A permanent security action that deletes your entire 
+        account, profile, comments, likes, and videos, then logs you out.
+*   Video Grid: Your posts are displayed in a clean 3-column thumbnail grid (like 
+    Instagram). Tapping any thumbnail opens a full-screen interactive video player.
+
+F. POSTING VIDEOS (THE UPLOAD WIZARD)
+*   Video Selection: Choose any video from your phone's photo library.
+*   Auto-generated Thumbnail: The app automatically extracts a snapshot from 
+    the video to use as a cover image.
+*   Caption Composer: Write a caption (up to 200 characters) to describe your 
+    post.
+*   Upload Safeguards:
+    *   File Size Limit: Videos are capped at 70 MB to prevent high data usage 
+        and slow loads.
+    *   Rate Limiting: Students can post a maximum of 5 videos per hour to 
+        prevent spam.
+    *   Verification: The app double-checks that the student's database profile 
+        is set up correctly before uploading to ensure the post succeeds.
+    *   Progress Tracking: A detailed progress bar shows what phase the upload 
+        is in (e.g. Uploading video... 45%, Uploading thumbnail..., Saving...).
+    *   Cancel Option: You can cancel the upload at any point, which stops all 
+        background transfers immediately.
+    *   Error Recovery: If your connection drops, the app displays a card with 
+        a description of the error and a "Retry" button.
+
+
+6. INSTANT NOTIFICATION SYSTEM
+--------------------------------------------------------------------------------
+To make interactions feel immediate, U-Buzz utilizes a real-time activity alert 
+system:
+
+*   Live Monitoring: The app constantly listens for likes or comments on your 
+    videos in the background.
+*   Alert Badges: If another user likes or comments on one of your videos, a red 
+    badge with the activity count (e.g., "1", "5", or "9+") instantly lights up 
+    over the Profile tab on your bottom menu bar.
+*   Automatic Reset: Tapping the Profile tab clears your activity count and 
+    resets the red badge.
+================================================================================

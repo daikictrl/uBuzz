@@ -43,11 +43,9 @@ export interface CommentsSheetProps {
   currentUserId: string | null;
   videoOwnerId?: string | null;
   onProfile: (userId: string) => void;
-  markCommentAsLocallyDeleted: (commentId: string) => void;
-  clearAllLocallyDeletedComments: () => void;
-  consumeLocallyDeletedComment: (commentId: string) => boolean;
-  optimisticDeleteCommentCount: (videoId: string) => void;
-  optimisticRestoreCommentCount: (videoId: string) => void;
+  optimisticAddCommentCount: (videoId: string) => void;
+  optimisticDeleteCommentCount: (videoId: string, commentId?: string) => void;
+  optimisticRestoreCommentCount: (videoId: string, commentId?: string) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -59,9 +57,7 @@ export default function CommentsSheet({
   currentUserId,
   videoOwnerId,
   onProfile,
-  markCommentAsLocallyDeleted,
-  clearAllLocallyDeletedComments,
-  consumeLocallyDeletedComment,
+  optimisticAddCommentCount,
   optimisticDeleteCommentCount,
   optimisticRestoreCommentCount,
 }: CommentsSheetProps) {
@@ -76,6 +72,9 @@ export default function CommentsSheet({
   const [loading, setLoading] = useState(false);
   const [inputText, setInputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Deduplication Tracking Sets ──
+  const locallyDeletedCommentIds = useRef<Set<string>>(new Set());
 
   // ── Mount / Dismount Animation ──
   useEffect(() => {
@@ -101,7 +100,7 @@ export default function CommentsSheet({
         // Animation finished — safe to reset and clear deduplication tracking
         setComments([]);
         setInputText('');
-        clearAllLocallyDeletedComments();
+        locallyDeletedCommentIds.current.clear();
       });
     }
   }, [visible, videoId, slideAnim]);
@@ -183,7 +182,10 @@ export default function CommentsSheet({
             .single();
 
           if (!error && data) {
-            setComments((prev) => [data as any, ...prev]);
+            setComments((prev) => {
+              if (prev.some((c) => c.id === data.id)) return prev;
+              return [data as any, ...prev];
+            });
           }
         }
       )
@@ -201,15 +203,6 @@ export default function CommentsSheet({
 
           // Always remove from local list (idempotent)
           setComments((prev) => prev.filter((c) => c.id !== deletedId));
-
-          // consumeLocallyDeletedComment returns true if this deletion was already
-          // handled optimistically (local delete flow). In that case the count was
-          // already decremented — skip to avoid a double-decrement.
-          // Returns false for external deletes (dashboard / another device) → decrement now.
-          const wasLocal = consumeLocallyDeletedComment(deletedId);
-          if (!wasLocal && videoId) {
-            optimisticDeleteCommentCount(videoId);
-          }
         }
       )
       .subscribe();
@@ -217,7 +210,7 @@ export default function CommentsSheet({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [visible, videoId]);
+  }, [visible, videoId, currentUserId]);
 
   // ── Handlers ──
   const handleSend = async () => {
@@ -236,6 +229,11 @@ export default function CommentsSheet({
 
       if (error) throw error;
       
+      // Optimistic count increment for the current user's submission
+      if (videoId && optimisticAddCommentCount) {
+        optimisticAddCommentCount(videoId);
+      }
+
       // Broadcast comment notification to video owner if not commenting on own video
       if (videoOwnerId && currentUserId && videoOwnerId !== currentUserId) {
         const notifChannel = supabase.channel(`channel-notif-comments-${videoOwnerId}`);
@@ -253,8 +251,6 @@ export default function CommentsSheet({
           });
       }
 
-      // Note: We don't manually update state here because the Realtime 
-      // subscription will catch the INSERT and update the list.
       setInputText('');
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not post comment.');
@@ -272,7 +268,7 @@ export default function CommentsSheet({
   };
 
   const handleDeleteComment = (comment: Comment) => {
-    if (comment.user_id !== currentUserId) return;
+    if (comment.user_id !== currentUserId && videoOwnerId !== currentUserId) return;
 
     Alert.alert(
       'Delete Comment',
@@ -288,26 +284,29 @@ export default function CommentsSheet({
             // Backup for rollback
             const backupComments = [...comments];
 
-            // 1. Mark as locally deleted (for useFeed deduplication)
-            markCommentAsLocallyDeleted(comment.id);
+            // 1. Mark as locally deleted
+            locallyDeletedCommentIds.current.add(comment.id);
 
             // 2. Optimistic local list update
             setComments((prev) => prev.filter((c) => c.id !== comment.id));
 
-            // 3. Optimistic count decrement via useFeed
-            optimisticDeleteCommentCount(videoId);
+            // 3. Optimistic count decrement
+            if (optimisticDeleteCommentCount) {
+              optimisticDeleteCommentCount(videoId, comment.id);
+            }
 
             // 4. Perform actual database delete
             const { error } = await supabase
               .from('comments')
               .delete()
-              .eq('id', comment.id)
-              .eq('user_id', currentUserId);
+              .eq('id', comment.id);
 
             if (error) {
               // Rollback
               setComments(backupComments);
-              optimisticRestoreCommentCount(videoId);
+              if (optimisticRestoreCommentCount) {
+                optimisticRestoreCommentCount(videoId, comment.id);
+              }
               Alert.alert('Error', 'Failed to delete comment. Try again.');
             }
           },
@@ -328,7 +327,7 @@ export default function CommentsSheet({
         activeOpacity={0.7}
         delayLongPress={300}
         onLongPress={() => {
-          if (item.user_id === currentUserId) {
+          if (item.user_id === currentUserId || videoOwnerId === currentUserId) {
             handleDeleteComment(item);
           }
         }}

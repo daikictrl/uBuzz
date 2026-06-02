@@ -39,9 +39,7 @@ export default function HomeScreen() {
     refreshing,
     error,
     setVideos,
-    markCommentAsLocallyDeleted,
-    clearAllLocallyDeletedComments,
-    consumeLocallyDeletedComment,
+    optimisticAddCommentCount,
     optimisticDeleteCommentCount,
     optimisticRestoreCommentCount,
     followedCount,
@@ -272,9 +270,7 @@ export default function HomeScreen() {
         currentUserId={currentUserId}
         videoOwnerId={activeCommentVideo?.user_id || null}
         onProfile={handleProfile}
-        markCommentAsLocallyDeleted={markCommentAsLocallyDeleted}
-        clearAllLocallyDeletedComments={clearAllLocallyDeletedComments}
-        consumeLocallyDeletedComment={consumeLocallyDeletedComment}
+        optimisticAddCommentCount={optimisticAddCommentCount}
         optimisticDeleteCommentCount={optimisticDeleteCommentCount}
         optimisticRestoreCommentCount={optimisticRestoreCommentCount}
       />

@@ -25,15 +25,7 @@ interface UseFeedResult {
   refreshing: boolean;
   error: string | null;
   setVideos: React.Dispatch<React.SetStateAction<FeedVideo[]>>;
-  markCommentAsLocallyDeleted: (commentId: string) => void;
-  clearAllLocallyDeletedComments: () => void;
-  /**
-   * Checks whether a comment was deleted locally (optimistic flow).
-   * Returns true and removes the ID from the tracking set if found.
-   * Returns false if the deletion originated externally.
-   * Used by CommentsSheet to decide whether to decrement the global count.
-   */
-  consumeLocallyDeletedComment: (commentId: string) => boolean;
+  optimisticAddCommentCount: (videoId: string) => void;
   optimisticDeleteCommentCount: (videoId: string) => void;
   optimisticRestoreCommentCount: (videoId: string) => void;
   followedCount: number;
@@ -74,31 +66,99 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     isLoadingMoreRef.current = false;
   }
 
-  // Track locally deleted comments to prevent double decrements
-  const locallyDeletedCommentIds = useRef<Set<string>>(new Set());
+  const locallyDeletedCommentIdsRef = useRef<Set<string>>(new Set());
+  const currentUserIdRef = useRef<string | null>(null);
 
-  const markCommentAsLocallyDeleted = useCallback((commentId: string) => {
-    locallyDeletedCommentIds.current.add(commentId);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (isMounted.current) {
+        currentUserIdRef.current = data?.user?.id ?? null;
+      }
+    });
   }, []);
 
-  const clearAllLocallyDeletedComments = useCallback(() => {
-    locallyDeletedCommentIds.current.clear();
+  // ── Global Realtime Comments Subscription ──
+  // Uses a ref for currentUserId so the channel is created ONCE and never torn down/re-created.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`comments_feed_global_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          const newComment = payload.new;
+          if (!newComment) return;
+
+          // If comment is from another user, increment the counter
+          if (newComment.user_id !== currentUserIdRef.current) {
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === newComment.video_id
+                  ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
+                  : v
+              )
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          const oldComment = payload.old;
+          if (!oldComment) return;
+
+          const commentId = oldComment.id;
+          const videoId = oldComment.video_id;
+
+          if (!videoId) return;
+
+          // Check if this was a local deletion
+          if (locallyDeletedCommentIdsRef.current.has(commentId)) {
+            locallyDeletedCommentIdsRef.current.delete(commentId);
+          } else {
+            // External deletion, decrement count
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === videoId
+                  ? { ...v, comment_count: Math.max(0, Number(v.comment_count || 0) - 1) }
+                  : v
+              )
+            );
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[useFeed] Global comments channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  /**
-   * Atomically checks + removes a comment from the locally-deleted tracking set.
-   * Returns true  → deletion was local (already decremented optimistically).
-   * Returns false → deletion is external (caller must decrement now).
-   */
-  const consumeLocallyDeletedComment = useCallback((commentId: string): boolean => {
-    if (locallyDeletedCommentIds.current.has(commentId)) {
-      locallyDeletedCommentIds.current.delete(commentId);
-      return true;
+  const optimisticAddCommentCount = useCallback((videoId: string) => {
+    setVideos((prev) =>
+      prev.map((v) =>
+        v.id === videoId
+          ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
+          : v
+      )
+    );
+  }, []);
+
+  const optimisticDeleteCommentCount = useCallback((videoId: string, commentId?: string) => {
+    if (commentId) {
+      locallyDeletedCommentIdsRef.current.add(commentId);
     }
-    return false;
-  }, []);
-
-  const optimisticDeleteCommentCount = useCallback((videoId: string) => {
     setVideos((prev) =>
       prev.map((v) =>
         v.id === videoId
@@ -108,7 +168,10 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     );
   }, []);
 
-  const optimisticRestoreCommentCount = useCallback((videoId: string) => {
+  const optimisticRestoreCommentCount = useCallback((videoId: string, commentId?: string) => {
+    if (commentId) {
+      locallyDeletedCommentIdsRef.current.delete(commentId);
+    }
     setVideos((prev) =>
       prev.map((v) =>
         v.id === videoId
@@ -222,40 +285,6 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     fetchPage(0);
   }, [feedType, fetchPage]);
 
-  // Global realtime subscription — INSERT only.
-  // Supabase Realtime only sends the primary key in payload.old for DELETE events
-  // on unfiltered subscriptions, even with FULL replica identity. DELETE count
-  // decrements are therefore handled inside CommentsSheet, which already receives
-  // filtered DELETE events and has videoId in scope.
-  useEffect(() => {
-    const uniqueName = `global_feed_comments_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const channel = supabase
-      .channel(uniqueName)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'comments' },
-        (payload) => {
-          const newComment = payload.new;
-          if (newComment && newComment.video_id) {
-            if (isMounted.current) {
-              setVideos((prev) =>
-                prev.map((v) =>
-                  v.id === newComment.video_id
-                    ? { ...v, comment_count: Number(v.comment_count || 0) + 1 }
-                    : v
-                )
-              );
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   /** Append next page (no-op if already loading) */
   const loadMore = useCallback(() => {
     if (isLoadingMoreRef.current) return;
@@ -278,9 +307,7 @@ export function useFeed(feedType: FeedType): UseFeedResult {
     refreshing,
     error,
     setVideos,
-    markCommentAsLocallyDeleted,
-    clearAllLocallyDeletedComments,
-    consumeLocallyDeletedComment,
+    optimisticAddCommentCount,
     optimisticDeleteCommentCount,
     optimisticRestoreCommentCount,
     followedCount,
