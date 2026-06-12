@@ -21,6 +21,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../../supabase/client';
 import { sanitizeText } from '../lib/validation';
+import { uploadImage } from '../services/cloudinary/uploadImage';
+import { uploadVideo } from '../services/cloudinary/uploadVideo';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,7 +46,7 @@ interface Props {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_HEIGHT = (SCREEN_WIDTH - 32) * (9 / 16); // 16:9
 const MAX_CAPTION_LENGTH = 200;
-const MAX_FILE_SIZE_BYTES = 70 * 1024 * 1024; // 70 MB
+const MAX_FILE_SIZE_BYTES = 30 * 1024 * 1024; // 30 MB
 const RATE_LIMIT_KEY = 'ubuzz_upload_history';
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -70,9 +72,7 @@ function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 10)}`;
-}
+
 
 // ─── Rate limit helpers ───────────────────────────────────────────────────────
 
@@ -155,6 +155,8 @@ export default function UploadScreen({ navigation }: Props) {
       mediaTypes: ['videos'],
       allowsEditing: true,
       quality: 0.5,
+      videoMaxDuration: 60,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
 
     if (result.canceled || !result.assets[0]) return;
@@ -190,13 +192,23 @@ export default function UploadScreen({ navigation }: Props) {
       return;
     }
 
+    // Duration check (max 60 seconds)
+    const durationInSeconds = videoDuration > 1000 ? videoDuration / 1000 : videoDuration;
+    if (durationInSeconds > 60) {
+      Alert.alert(
+        'Video too long',
+        'Videos must be 60 seconds or shorter for the short-form feed. Please choose or edit a shorter video.'
+      );
+      return;
+    }
+
     // File size check
     try {
       const info = await FileSystem.getInfoAsync(videoUri);
       if ('size' in info && info.size && info.size > MAX_FILE_SIZE_BYTES) {
         Alert.alert(
           'File too large',
-          'Video is too large. Maximum size is 70MB.\nPlease choose a shorter or lower quality video.'
+          'Video is too large. Maximum size is 30MB.\nPlease choose a shorter or lower quality video.'
         );
         return;
       }
@@ -295,10 +307,6 @@ export default function UploadScreen({ navigation }: Props) {
       }
     }
 
-    const fileId = generateId();
-    const videoPath = `${user.id}/${fileId}.mp4`;
-    const thumbPath = `${user.id}/${fileId}.jpg`;
-
     try {
       // ── Step 4: Ensure thumbnail exists ───────────────────────────────────
       let finalThumbUri = thumbnailUri;
@@ -316,38 +324,15 @@ export default function UploadScreen({ navigation }: Props) {
       // ── Step 5: Upload video ───────────────────────────────────────────────
       setPhase('uploading_video');
 
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-      const uploadUrl = `${supabaseUrl}/storage/v1/object/videos/${videoPath}`;
-
-      const uploadTask = FileSystem.createUploadTask(
-        uploadUrl,
-        videoUri,
-        {
-          httpMethod: 'POST',
-          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            apikey: supabaseAnonKey || '',
-            'Content-Type': 'video/mp4',
-            'x-upsert': 'false',
-          },
-        },
-        (p) => {
+      const videoUploadResult = await uploadVideo(videoUri, {
+        onProgress: (progressPercentage) => {
           if (!cancelledRef.current) {
-            setProgress(Math.round((p.totalBytesSent / p.totalBytesExpectedToSend) * 85));
+            setProgress(Math.round((progressPercentage / 100) * 85));
           }
         }
-      );
-
-      const uploadResult = await uploadTask.uploadAsync();
+      });
 
       if (cancelledRef.current) return;
-
-      if (!uploadResult || uploadResult.status !== 200) {
-        throw new Error(`Video upload failed: ${uploadResult?.body || 'Unknown error'}`);
-      }
 
       // ── Step 6: Upload thumbnail ───────────────────────────────────────────
       setPhase('uploading_thumbnail');
@@ -356,44 +341,17 @@ export default function UploadScreen({ navigation }: Props) {
       let publicThumbUrl: string | null = null;
 
       if (finalThumbUri) {
-        const thumbUploadUrl = `${supabaseUrl}/storage/v1/object/thumbnails/${thumbPath}`;
-        
-        const thumbUploadTask = FileSystem.createUploadTask(
-          thumbUploadUrl,
-          finalThumbUri,
-          {
-            httpMethod: 'POST',
-            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: supabaseAnonKey || '',
-              'Content-Type': 'image/jpeg',
-              'x-upsert': 'false',
-            },
-          }
-        );
-
-        const thumbUploadResult = await thumbUploadTask.uploadAsync();
-
+        const thumbUploadResult = await uploadImage(finalThumbUri);
         if (cancelledRef.current) return;
-
-        if (thumbUploadResult?.status === 200) {
-          const { data: thumbPublic } = supabase.storage
-            .from('thumbnails')
-            .getPublicUrl(thumbPath);
-          publicThumbUrl = thumbPublic.publicUrl;
-        }
+        publicThumbUrl = thumbUploadResult.secure_url;
       }
 
       if (cancelledRef.current) return;
       setProgress(90);
 
       // ── Step 7: Get public video URL ───────────────────────────────────────
-      const { data: videoPublic } = supabase.storage
-        .from('videos')
-        .getPublicUrl(videoPath);
-
-      if (!videoPublic?.publicUrl) throw new Error('Failed to get video public URL.');
+      const publicVideoUrl = videoUploadResult.secure_url;
+      if (!publicVideoUrl) throw new Error('Failed to get video public URL.');
 
       // ── Step 8: INSERT into videos table ──────────────────────────────────
       setPhase('saving');
@@ -401,9 +359,11 @@ export default function UploadScreen({ navigation }: Props) {
 
       const { error: insertError } = await supabase.from('videos').insert({
         user_id: user.id,
-        video_url: videoPublic.publicUrl,
+        video_url: publicVideoUrl,
         thumbnail_url: publicThumbUrl,
         caption: sanitizeText(caption.trim(), 200),
+        media_provider: 'cloudinary',
+        cloudinary_public_id: videoUploadResult.public_id,
       });
 
       if (insertError) throw new Error(`Save failed: ${insertError.message}`);

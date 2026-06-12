@@ -8,8 +8,8 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
 import supabase from '../../supabase/client';
+import { uploadImage } from '../services/cloudinary/uploadImage';
 import { sanitizeText } from '../lib/validation';
 
 interface EditProfileSheetProps {
@@ -115,37 +115,35 @@ export default function EditProfileSheet({
     setSaveState('saving');
     try {
       let finalAvatarUrl = initialAvatarUrl;
+      let avatarPublicId: string | undefined;
+      let avatarProvider: string | undefined;
 
       // 1. Upload new image if picked
       if (localImagePicked && avatarUri) {
         setSaveState('uploading_image');
-        const fileExt = avatarUri.split('.').pop() || 'jpeg';
-        const fileName = `${currentUserId}-${Date.now()}.${fileExt}`;
-        const filePath = `${currentUserId}/${fileName}`;
-        
-        const base64 = await FileSystem.readAsStringAsync(avatarUri, { encoding: 'base64' });
-        
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, decode(base64), { 
-            contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`
-          });
-          
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        finalAvatarUrl = publicUrl;
+        const uploadResult = await uploadImage(avatarUri);
+        finalAvatarUrl = uploadResult.secure_url;
+        avatarPublicId = uploadResult.public_id;
+        avatarProvider = 'cloudinary';
       }
 
       setSaveState('saving');
       // 2. Update profile table
+      const updatePayload: Record<string, any> = {
+        username: sanitizedUsername,
+        bio: sanitizedBio,
+        avatar_url: finalAvatarUrl,
+      };
+
+      // Only update provider metadata when a new avatar was uploaded
+      if (avatarProvider) {
+        updatePayload.media_provider = avatarProvider;
+        updatePayload.cloudinary_public_id = avatarPublicId;
+      }
+
       const { error: updateError } = await supabase
-        .from('users') // Assuming table is users or profiles based on project struct
-        .update({
-          username: sanitizedUsername,
-          bio: sanitizedBio,
-          avatar_url: finalAvatarUrl
-        })
+        .from('users')
+        .update(updatePayload)
         .eq('id', currentUserId);
 
       if (updateError) throw updateError;
