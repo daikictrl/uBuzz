@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import supabase from '../../supabase/client';
 import { FeedVideo } from '../hooks/useFeed';
+import { optimizeVideoUrl, optimizeThumbnailUrl, optimizeAvatarUrl } from '../services/cloudinary/urlTransform';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -212,7 +213,7 @@ export default function VideoCard({
   }, []);
 
   // ── expo-video player ───────────────────────────────────────────────────────
-  const player = useVideoPlayer({ uri: video.video_url }, (p) => {
+  const player = useVideoPlayer({ uri: optimizeVideoUrl(video.video_url) }, (p) => {
     p.loop = true;
     p.muted = localMuted;
   });
@@ -395,7 +396,7 @@ export default function VideoCard({
           {/* Thumbnail shown as background while video loads (replaces expo-av usePoster) */}
           {video.thumbnail_url && (
             <Image
-              source={{ uri: video.thumbnail_url }}
+              source={{ uri: optimizeThumbnailUrl(video.thumbnail_url)! }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
@@ -528,7 +529,7 @@ export default function VideoCard({
         >
           {video.avatar_url ? (
             <Image
-              source={{ uri: video.avatar_url }}
+              source={{ uri: optimizeAvatarUrl(video.avatar_url)! }}
               style={styles.avatar}
               contentFit="cover"
             />

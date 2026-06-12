@@ -15,6 +15,7 @@ import { FeedVideo } from '../hooks/useFeed';
 import SkeletonGrid from '../components/SkeletonGrid';
 import { badgeManager } from '../lib/badge';
 import CommentsSheet from '../components/CommentsSheet';
+import { optimizeAvatarUrl, optimizeThumbnailUrl } from '../services/cloudinary/urlTransform';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CELL_SIZE = SCREEN_WIDTH / 3;
@@ -523,7 +524,7 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
         style={styles.avatarContainer}
       >
         {profile.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={styles.avatar} contentFit="cover" />
+          <Image source={{ uri: optimizeAvatarUrl(profile.avatar_url)! }} style={styles.avatar} contentFit="cover" />
         ) : (
           <View style={styles.avatarPlaceholder}>
             <Ionicons name="person" size={40} color="#9CA3AF" />
@@ -606,7 +607,7 @@ function ProfileContent({ userId, isOwnProfile, authUid }: { userId: string, isO
       onPress={() => handleSelectVideo(item)}
     >
       {item.thumbnail_url ? (
-        <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} contentFit="cover" />
+        <Image source={{ uri: optimizeThumbnailUrl(item.thumbnail_url)! }} style={styles.thumbnail} contentFit="cover" />
       ) : (
         <View style={styles.thumbnailPlaceholder} />
       )}

@@ -9,6 +9,7 @@ import {
   ViewToken,
   TouchableOpacity,
   StatusBar,
+  AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,8 +96,19 @@ export default function HomeScreen() {
   // ── Pause all videos when screen loses focus (e.g. upload modal opens) ──────
   const isFocused = useIsFocused();
 
-  // Derived active index: -1 when screen is not visible → all VideoCards pause
-  const effectiveActiveIndex = isFocused ? activeIndex : -1;
+  // ── Pause all videos when app enters background/inactive ────────────────────
+  const [appIsActive, setAppIsActive] = useState(true);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppIsActive(nextAppState === 'active');
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Derived active index: -1 when screen is not visible OR app is backgrounded
+  const effectiveActiveIndex = isFocused && appIsActive ? activeIndex : -1;
 
   // ── Auto-refresh when returning to this screen after a completed upload ──────
   // We skip the very first focus event (initial mount) to avoid a double-fetch.
@@ -227,6 +239,11 @@ export default function HomeScreen() {
         windowSize={3}
         maxToRenderPerBatch={2}
         initialNumToRender={1}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_HEIGHT,
+          offset: SCREEN_HEIGHT * index,
+          index,
+        })}
         // ── Empty state ──
         ListEmptyComponent={
           <View style={[styles.card, styles.centered]}>

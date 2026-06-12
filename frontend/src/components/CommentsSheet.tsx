@@ -20,6 +20,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import supabase from '../../supabase/client';
 import { sanitizeText } from '../lib/validation';
+import { optimizeAvatarUrl } from '../services/cloudinary/urlTransform';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -318,7 +319,7 @@ export default function CommentsSheet({
 
   // ── Renders ──
   const renderItem = ({ item }: { item: Comment }) => {
-    const avatar = item.users?.avatar_url;
+    const avatar = optimizeAvatarUrl(item.users?.avatar_url ?? null);
     const username = item.users?.username || 'user';
 
     return (

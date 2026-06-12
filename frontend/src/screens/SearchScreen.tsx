@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useSearch, SearchResultUser } from '../hooks/useSearch';
+import { optimizeAvatarUrl } from '../services/cloudinary/urlTransform';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export default function SearchScreen() {
       >
         <View style={styles.cardLeft}>
           {item.avatar_url ? (
-            <Image source={{ uri: item.avatar_url }} style={styles.avatar} contentFit="cover" />
+            <Image source={{ uri: optimizeAvatarUrl(item.avatar_url)! }} style={styles.avatar} contentFit="cover" />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Ionicons name="person" size={24} color="#FFFFFF" />
