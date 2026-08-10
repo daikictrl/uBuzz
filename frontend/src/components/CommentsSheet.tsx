@@ -81,7 +81,6 @@ export default function CommentsSheet({
   useEffect(() => {
     if (visible && videoId) {
       // Reset states
-      setKeyboardHeight(0);
       setInputText('');
       fetchComments();
 
@@ -106,12 +105,15 @@ export default function CommentsSheet({
     }
   }, [visible, videoId, slideAnim]);
 
-  // ── Keyboard Listeners (Strict dual-transform pattern) ──
+  // ── Keyboard Listeners ──
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e: KeyboardEvent) => {
       setKeyboardHeight(e.endCoordinates.height);
     });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+    const hideSub = Keyboard.addListener(hideEvent, () => {
       setKeyboardHeight(0);
     });
 
@@ -366,6 +368,7 @@ export default function CommentsSheet({
       transparent
       animationType="none"
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
       <View style={StyleSheet.absoluteFill} pointerEvents="auto">
         {/* Dimmed Background */}
@@ -378,10 +381,8 @@ export default function CommentsSheet({
         style={[
           styles.sheet,
           {
-            transform: [
-              { translateY: slideAnim },
-              { translateY: Platform.OS === 'ios' ? -keyboardHeight : 0 },
-            ],
+            transform: [{ translateY: slideAnim }],
+            bottom: keyboardHeight,
           },
         ]}
       >
@@ -404,6 +405,7 @@ export default function CommentsSheet({
             keyExtractor={(c: Comment) => c.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <Text style={styles.emptyText}>No comments yet. Be the first!</Text>
             }
@@ -450,7 +452,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: '65%',
+    top: '35%',
     backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

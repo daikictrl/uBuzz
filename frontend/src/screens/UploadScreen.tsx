@@ -107,6 +107,7 @@ async function recordUpload(): Promise<void> {
 
 type UploadPhase =
   | 'idle'
+  | 'preparing'
   | 'uploading_video'
   | 'uploading_thumbnail'
   | 'saving'
@@ -133,6 +134,7 @@ export default function UploadScreen({ navigation }: Props) {
   const cancelledRef = useRef(false);
 
   const isUploading =
+    phase === 'preparing' ||
     phase === 'uploading_video' ||
     phase === 'uploading_thumbnail' ||
     phase === 'saving';
@@ -156,7 +158,7 @@ export default function UploadScreen({ navigation }: Props) {
       allowsEditing: true,
       quality: 0.5,
       videoMaxDuration: 60,
-      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
+      videoExportPreset: ImagePicker.VideoExportPreset.Passthrough,
     });
 
     if (result.canceled || !result.assets[0]) return;
@@ -182,6 +184,9 @@ export default function UploadScreen({ navigation }: Props) {
   // ── Section 4: Upload flow ─────────────────────────────────────────────────
 
   const handlePost = useCallback(async () => {
+    // ── Concurrency Guard ────────────────────────────────────────────────────
+    if (isUploading) return;
+
     // ── Validate ─────────────────────────────────────────────────────────────
     if (!videoUri) {
       Alert.alert('No video', 'Please choose a video first.');
@@ -202,6 +207,12 @@ export default function UploadScreen({ navigation }: Props) {
       return;
     }
 
+    // Lock the UI immediately
+    setPhase('preparing');
+    cancelledRef.current = false;
+    setErrorMessage(null);
+    setProgress(0);
+
     // File size check
     try {
       const info = await FileSystem.getInfoAsync(videoUri);
@@ -210,6 +221,7 @@ export default function UploadScreen({ navigation }: Props) {
           'File too large',
           'Video is too large. Maximum size is 30MB.\nPlease choose a shorter or lower quality video.'
         );
+        setPhase('idle');
         return;
       }
     } catch {
@@ -220,13 +232,9 @@ export default function UploadScreen({ navigation }: Props) {
     const { allowed } = await checkRateLimit();
     if (!allowed) {
       Alert.alert('Upload limit reached', 'You have uploaded 5 videos in the last hour. Try again later.');
+      setPhase('idle');
       return;
     }
-
-    // ── Begin upload ──────────────────────────────────────────────────────────
-    cancelledRef.current = false;
-    setErrorMessage(null);
-    setProgress(0);
 
     const {
       data: { session },
@@ -234,6 +242,7 @@ export default function UploadScreen({ navigation }: Props) {
 
     if (!session?.user) {
       Alert.alert('Error', 'You must be logged in to post.');
+      setPhase('idle');
       return;
     }
     const user = session.user;
@@ -283,6 +292,7 @@ export default function UploadScreen({ navigation }: Props) {
             'Your user profile is missing from the database. Please visit your Profile tab to auto-create it or contact support.',
             [{ text: 'OK' }]
           );
+          setPhase('idle');
           return;
         } else if (recoveryData) {
           console.log('[UploadScreen] Profile successfully auto-created during upload recovery.');
@@ -294,6 +304,7 @@ export default function UploadScreen({ navigation }: Props) {
             'Your user profile could not be verified. Please visit your Profile tab and try again.',
             [{ text: 'OK' }]
           );
+          setPhase('idle');
           return;
         }
       } catch (recoveryErr) {
@@ -303,6 +314,7 @@ export default function UploadScreen({ navigation }: Props) {
           'Failed to recover your user profile. Please check your connection and try again.',
           [{ text: 'OK' }]
         );
+        setPhase('idle');
         return;
       }
     }
@@ -415,7 +427,9 @@ export default function UploadScreen({ navigation }: Props) {
 
   // ── Progress label ──────────────────────────────────────────────────────────
   const progressLabel =
-    phase === 'uploading_video'
+    phase === 'preparing'
+      ? 'Preparing upload...'
+      : phase === 'uploading_video'
       ? `Uploading video... ${progress}%`
       : phase === 'uploading_thumbnail'
       ? 'Uploading thumbnail...'
@@ -517,7 +531,7 @@ export default function UploadScreen({ navigation }: Props) {
                 <Ionicons name="cloud-upload-outline" size={36} color={C.primary} />
               </View>
               <Text style={styles.emptyPreviewTitle}>Tap to choose a video</Text>
-              <Text style={styles.emptyPreviewSub}>70 MB limit</Text>
+              <Text style={styles.emptyPreviewSub}>30 MB limit</Text>
             </View>
           )}
         </TouchableOpacity>

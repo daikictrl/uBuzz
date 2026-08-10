@@ -3,6 +3,24 @@ import { View, StyleSheet, Dimensions, Animated } from 'react-native';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// ── Aspect Ratio Sizing (Option 3) ───────────────────────────────────────────
+const SCREEN_RATIO = SCREEN_HEIGHT / SCREEN_WIDTH;
+const TARGET_RATIO = 16 / 9;
+
+let VIDEO_WIDTH = SCREEN_WIDTH;
+let VIDEO_HEIGHT = SCREEN_HEIGHT;
+
+if (SCREEN_RATIO > TARGET_RATIO) {
+  // Screen is taller than 9:16 (modern vertical screens) -> fit width
+  VIDEO_HEIGHT = SCREEN_WIDTH * TARGET_RATIO;
+  VIDEO_WIDTH = SCREEN_WIDTH;
+} else {
+  // Screen is wider than 9:16 (tablets, landscape) -> fit height
+  VIDEO_WIDTH = SCREEN_HEIGHT / TARGET_RATIO;
+  VIDEO_HEIGHT = SCREEN_HEIGHT;
+}
+
+
 export default function SkeletonCard() {
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
@@ -64,7 +82,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   shimmerBg: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    width: VIDEO_WIDTH,
+    height: VIDEO_HEIGHT,
+    left: (SCREEN_WIDTH - VIDEO_WIDTH) / 2,
+    top: (SCREEN_HEIGHT - VIDEO_HEIGHT) / 2,
     backgroundColor: '#1a1a1a',
   },
   actionsColumn: {

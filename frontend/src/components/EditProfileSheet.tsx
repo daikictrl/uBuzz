@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, 
   KeyboardAvoidingView, Platform, ActivityIndicator, Animated, 
-  TouchableWithoutFeedback, Keyboard, Alert
+  TouchableWithoutFeedback, Keyboard, Alert, ScrollView
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -176,10 +176,11 @@ export default function EditProfileSheet({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
       <KeyboardAvoidingView 
         style={styles.overlay} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.backdrop}>
@@ -216,41 +217,47 @@ export default function EditProfileSheet({
               </View>
 
               {/* Form Fields */}
-              <View style={styles.form}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Username</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={username}
-                    onChangeText={(t) => { setUsername(t); setUsernameError(null); }}
-                    maxLength={20}
-                    placeholder="Enter username"
-                    placeholderTextColor="#666"
-                    autoCapitalize="none"
-                    editable={!isBusy}
-                  />
-                  {usernameError && <Text style={styles.errorText}>{usernameError}</Text>}
-                </View>
+              <ScrollView
+                bounces={false}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.form}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Username</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={username}
+                      onChangeText={(t) => { setUsername(t); setUsernameError(null); }}
+                      maxLength={20}
+                      placeholder="Enter username"
+                      placeholderTextColor="#666"
+                      autoCapitalize="none"
+                      editable={!isBusy}
+                    />
+                    {usernameError && <Text style={styles.errorText}>{usernameError}</Text>}
+                  </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Bio</Text>
-                  <TextInput
-                    style={[styles.input, styles.bioInput]}
-                    value={bio}
-                    onChangeText={(t) => {
-                      if (t.length <= 100) {
-                        setBio(t);
-                      }
-                    }}
-                    maxLength={100}
-                    placeholder="Tell us about yourself"
-                    placeholderTextColor="#666"
-                    multiline
-                    editable={!isBusy}
-                  />
-                  <Text style={styles.charCount}>{bio.length}/100</Text>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Bio</Text>
+                    <TextInput
+                      style={[styles.input, styles.bioInput]}
+                      value={bio}
+                      onChangeText={(t) => {
+                        if (t.length <= 100) {
+                          setBio(t);
+                        }
+                      }}
+                      maxLength={100}
+                      placeholder="Tell us about yourself"
+                      placeholderTextColor="#666"
+                      multiline
+                      editable={!isBusy}
+                    />
+                    <Text style={styles.charCount}>{bio.length}/100</Text>
+                  </View>
                 </View>
-              </View>
+              </ScrollView>
 
             </Animated.View>
           </View>

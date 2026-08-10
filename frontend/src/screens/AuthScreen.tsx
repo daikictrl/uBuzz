@@ -421,7 +421,15 @@ export default function AuthScreen() {
                   placeholderTextColor="#ffffff99"
                   className={`bg-black/20 text-white px-4 py-4 rounded-xl border ${fullNameError ? 'border-[#FF8A8A] border-2' : 'border-white/10'}`}
                   value={fullName}
-                  onChangeText={setFullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    const trimmed = sanitizeText(text.trim(), 50);
+                    if (trimmed.length < 2) {
+                      setFullNameError('Full name is required.');
+                    } else {
+                      setFullNameError('');
+                    }
+                  }}
                   // CQ-9 FIX: words auto-capitalization suits name entry
                   autoCapitalize="words"
                 />
@@ -439,9 +447,9 @@ export default function AuthScreen() {
                   placeholderTextColor="#ffffff99"
                   className={`bg-black/20 text-white px-4 py-4 rounded-xl border ${usernameError ? 'border-[#FF8A8A] border-2' : 'border-white/10'}`}
                   value={username}
-                  onChangeText={setUsername}
-                  onBlur={() => {
-                    const res = isValidUsername(username);
+                  onChangeText={(text) => {
+                    setUsername(text);
+                    const res = isValidUsername(sanitizeText(text.trim().toLowerCase(), 20));
                     setUsernameError(res.valid ? '' : res.error);
                   }}
                   autoCapitalize="none"
@@ -460,18 +468,11 @@ export default function AuthScreen() {
                   placeholderTextColor="#ffffff99"
                   className={`bg-black/20 text-white px-4 py-4 rounded-xl border ${matriculeError ? 'border-[#FF8A8A] border-2' : 'border-white/10'}`}
                   value={matricule}
-                  onChangeText={setMatricule}
-                  onBlur={() => {
-                    // BUG-1 FIX: normalize via local const, not setState
-                    const normalized = matricule.trim().toUpperCase();
+                  onChangeText={(text) => {
+                    setMatricule(text);
+                    const normalized = text.trim().toUpperCase();
                     const res = isValidMatricule(normalized);
-                    if (!res.valid) {
-                      setMatriculeError(res.error);
-                    } else {
-                      setMatriculeError('');
-                      // Update display value only
-                      setMatricule(normalized);
-                    }
+                    setMatriculeError(res.valid ? '' : res.error);
                   }}
                   autoCapitalize="characters"
                 />
@@ -489,10 +490,9 @@ export default function AuthScreen() {
                   placeholderTextColor="#ffffff99"
                   className={`bg-black/20 text-white px-4 py-4 rounded-xl border ${emailError ? 'border-[#FF8A8A] border-2' : 'border-white/10'}`}
                   value={email}
-                  onChangeText={setEmail}
-                  onBlur={() => {
-                    // BUG-6 FIX: validate email on blur in BOTH modes
-                    const res = isValidEmail(email);
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    const res = isValidEmail(text.trim());
                     setEmailError(res.valid ? '' : res.error);
                   }}
                   autoCapitalize="none"
@@ -531,7 +531,23 @@ export default function AuthScreen() {
                     placeholderTextColor="#ffffff99"
                     className="flex-1 text-white px-4 py-4"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (mode === 'signup' || mode === 'forgot_password') {
+                        if (text.length < 8) {
+                          setPasswordError('Password must be at least 8 characters.');
+                        } else {
+                          setPasswordError('');
+                        }
+                        if (confirmPasswordError) {
+                          if (text === confirmPassword) {
+                            setConfirmPasswordError('');
+                          } else {
+                            setConfirmPasswordError('Passwords do not match.');
+                          }
+                        }
+                      }
+                    }}
                     secureTextEntry={!showPassword}
                   />
                   <TouchableOpacity
@@ -560,7 +576,14 @@ export default function AuthScreen() {
                     placeholderTextColor="#ffffff99"
                     className="flex-1 text-white px-4 py-4"
                     value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    onChangeText={(text) => {
+                      setConfirmPassword(text);
+                      if (text !== password) {
+                        setConfirmPasswordError('Passwords do not match.');
+                      } else {
+                        setConfirmPasswordError('');
+                      }
+                    }}
                     secureTextEntry={!showConfirmPassword}
                   />
                   <TouchableOpacity

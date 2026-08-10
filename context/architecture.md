@@ -67,7 +67,7 @@ ubuzz/
 |------------|-------------|-------------------------------------|
 | id         | UUID        | PK, DEFAULT uuid_generate_v4()     |
 | email      | TEXT        | NOT NULL, UNIQUE                   |
-| matricule  | TEXT        | NOT NULL, UNIQUE, CHECK ^IU[0-9]{4,}$ |
+| matricule  | TEXT        | NOT NULL, UNIQUE, CHECK ^IU[0-9]{4,6}$ |
 | username   | TEXT        | NOT NULL, UNIQUE                   |
 | avatar_url | TEXT        |                                    |
 | bio        | TEXT        |                                    |

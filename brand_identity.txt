@@ -1,0 +1,513 @@
+================================================================================
+                           U-BUZZ — BRAND IDENTITY GUIDE
+================================================================================
+
+PROJECT NAME: U-Buzz
+TAGLINE: IUGET's Campus Network
+PRIMARY AUDIENCE: Students of IUGET (Institut Universitaire des Grandes Ecoles des Tropiques), Douala, Cameroon
+PLATFORM: iOS & Android (React Native / Expo)
+BUNDLE ID: com.ubuzz.campus
+LANGUAGE: English (Primary)
+
+================================================================================
+                           BRAND POSITIONING
+================================================================================
+
+MISSION STATEMENT
+U-Buzz is a campus-exclusive, short-form video social platform designed exclusively for 
+IUGET students to share, discover, and interact with campus life — solving the 
+hyper-local communication gap left by global platforms, while respecting the 
+bandwidth constraints and identity privacy needs of students in Cameroon.
+
+BRAND PERSONALITY
+- Youthful & Energetic: Matches the TikTok/Reels energy students already love
+- Trustworthy & Safe: Campus-only, matricule-verified, privacy-first (masked IDs)
+- Smart & Data-Conscious: Built for Cameroon's expensive mobile data reality
+- Community-Focused: Not a global feed — a digital campus square
+- Modern & Premium: Glassmorphism UI, smooth animations, dark-first aesthetic
+
+UNIQUE VALUE PROPOSITIONS
+1. Campus-Exclusive: Content never leaves IUGET — no strangers, no algorithm chasing 
+   global virality
+2. Data-Conscious Streaming: Cloudinary-powered 1 Mbps / 720p cap saves student data
+3. Privacy-First Verification: Matricule-verified (IU****45 masking), honor-system 
+   with admin oversight
+4. Admin Channel: Official admin announcements with PDF attachments — a dedicated 
+   channel that doesn't get buried in the feed
+5. Real-Time Campus Pulse: Live comments, likes, and announcement badges — instant 
+   campus conversation
+
+================================================================================
+                           VISUAL IDENTITY
+================================================================================
+
+COLOR PALETTE
+--------------
+Primary Dark (Background):     #0A0A0F  — Near-black, deep space base
+Surface / Glass Base:          #16161E  — Dark card background (8% opacity white overlay)
+Glass Highlight:               rgba(255, 255, 255, 0.08) — Subtle glassmorphism border
+Glass Strong:                  rgba(255, 255, 255, 0.12) — Elevated glass cards
+
+Primary Accent (Purple):       #8B5CF6  — Vibrant purple, primary CTA, upload button
+Primary Accent Hover:          #A78BFA  — Lighter purple for press states
+Secondary Accent (Pink):       #EC4899  — Energetic pink, likes, hearts, notifications
+Secondary Accent Hover:        #F472B6  — Lighter pink for interactions
+Tertiary Accent (Blue):        #3B82F6  — Trust blue, links, verified badges
+
+Success Green:                 #22C55E  — Success states, upload complete
+Warning Amber:                 #F59E0B  — Warnings, rate limits
+Error Red:                     #EF4444  — Errors, deletions, reports
+
+Text Primary:                  #FFFFFF  — Pure white, high contrast
+Text Secondary:                #A1A1AA  — Muted zinc-400, secondary labels
+Text Muted:                    #71717A  — Placeholder, disabled, timestamps
+Text Inverse:                  #0A0A0F  — On accent backgrounds
+
+Gradient Primary:              linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)
+Gradient Surface:              linear-gradient(135deg, #16161E 0%, #0A0A0F 100%)
+Gradient Glass:                linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(236,72,153,0.15) 100%)
+
+USAGE GUIDELINES
+- Dark mode ONLY — no light theme
+- Primary Purple (#8B5CF6) = Primary CTAs (Upload button, primary actions)
+- Secondary Pink (#EC4899) = Engagement actions (Likes, hearts, notifications)
+- Glassmorphism cards: Surface base + Glass Highlight border + backdrop-filter blur
+- Gradients reserved for: Upload button, loading skeletons, hero accents
+- Never use gradients on text — only on backgrounds and decorative elements
+
+TYPOGRAPHY
+----------
+Font Family: System Fonts (San Francisco on iOS, Roboto on Android)
+            — No custom font files; leverage platform defaults for performance
+
+Scale (Mobile):
+- Display Large:      32px / 40px, Weight 700 — Screen titles (rare)
+- Display Medium:     28px / 36px, Weight 700 — Section headers
+- Headline Large:     22px / 30px, Weight 600 — Card titles, profile names
+- Headline Medium:    18px / 26px, Weight 600 — Sub-headers, button labels
+- Body Large:         16px / 24px, Weight 400 — Primary body text, captions
+- Body Medium:        14px / 20px, Weight 400 — Secondary text, metadata
+- Body Small:         12px / 16px, Weight 400 — Timestamps, small labels
+- Label Large:        14px / 20px, Weight 500 — Button text, chip labels
+- Label Medium:       12px / 16px, Weight 500 — Tab labels, badges
+
+Font Weights Used: 400 (Regular), 500 (Medium), 600 (Semibold), 700 (Bold)
+Letter-spacing: Default (0) for all — no tracking adjustments
+
+ICONOGRAPHY
+-----------
+Style: Outlined (2px stroke) for inactive, Filled for active states
+Set: Lucide React Native / Expo Vector Icons (consistent 24x24 grid)
+Key Icons:
+- Home: House (outlined/filled)
+- Search: Search (magnifying glass)
+- Upload: Plus (raised, purple filled circle background)
+- Profile: User (outlined/filled)
+- Like: Heart (outlined → filled pink on active)
+- Comment: MessageSquare (outlined)
+- Share: Share2 (outlined)
+- Follow: UserPlus / UserCheck
+- Settings: Settings
+- Menu/More: MoreVertical
+- Video Play: Play (filled)
+- Volume: Volume2 / VolumeX
+- Expand: ChevronDown / ChevronUp
+- Close: X
+- Verified: ShieldCheck (blue)
+- Admin: Crown (purple)
+
+SPACING SYSTEM
+--------------
+Base Unit: 4px
+Scale: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64
+- xs: 4px   — Icon gaps, tight inline spacing
+- sm: 8px   — Component internal padding
+- md: 16px  — Standard screen padding, card gaps
+- lg: 24px  — Section spacing, modal padding
+- xl: 32px  — Major section breaks
+- 2xl: 48px — Screen-level margins (rare)
+
+BORDER RADIUS
+-------------
+- xs: 4px   — Chips, badges, small buttons
+- sm: 8px   — Input fields, small cards
+- md: 12px  — Standard cards, bottom sheets
+- lg: 16px  — Large cards, modals
+- xl: 24px  — Full-screen modals, hero sections
+- full: 9999px — Pills, avatar circles, FAB
+
+SHADOWS & ELEVATION
+-------------------
+- Level 1 (Glass):  0 1px 2px rgba(0,0,0,0.15), backdrop-blur(12px)
+- Level 2 (Card):   0 4px 12px rgba(0,0,0,0.25)
+- Level 3 (Modal):  0 12px 32px rgba(0,0,0,0.35)
+- Level 4 (FAB):    0 8px 24px rgba(139,92,246,0.4) — Purple glow on upload button
+
+ANIMATION & MOTION
+------------------
+Easing: cubic-bezier(0.25, 0.46, 0.45, 0.94) — "Ease Out Expo" feel
+Durations:
+- Fast: 120ms — Button presses, icon taps
+- Normal: 200ms — Sheet slides, card expansions
+- Slow: 300ms — Modal entrances, page transitions
+- Skeleton Pulse: 1000ms infinite — Loading placeholders
+
+Key Motions:
+- Bottom Sheet: Slide up from bottom (200ms, ease-out)
+- Video Swipe: Snap to next (150ms, spring damping 0.8)
+- Heart Burst: Scale 0→1.5→1 (300ms, spring) + fade out
+- Upload Progress: Linear progress bar, smooth width transition
+- Skeleton: Pulse opacity 0.4→1→0.4 (1000ms, ease-in-out)
+
+================================================================================
+                           VOICE & TONE
+================================================================================
+
+BRAND VOICE ATTRIBUTES
+- Friendly but not childish
+- Confident but not arrogant
+- Inclusive but campus-exclusive
+- Smart about data — respectful of constraints
+- Clear, direct, jargon-free
+
+TONE SPECTRUM
+- Onboarding: Warm, encouraging, guiding ("Welcome to your campus network!")
+- Error States: Helpful, non-blaming, actionable ("Connection dropped. Tap to retry.")
+- Success: Celebratory but brief ("Posted! Your video is live.")
+- Empty States: Inviting, not empty ("No videos yet. Be the first to post!")
+- Notifications: Informative, timely ("3 new likes on your video")
+- Admin/Announcements: Authoritative but accessible ("Campus Announcement: Exam schedule updated")
+
+COPY GUIDELINES
+- Use "U-Buzz" (with hyphen) in all branded contexts
+- "Campus" = IUGET specifically, not generic
+- "Student" or "creator" — never "user" in user-facing copy
+- "Matricule" (not "Student ID") — local terminology
+- Character limits: Captions 200 chars, Bio 150 chars
+- Masked format example: "IU****45" — always 4 asterisks
+- No emojis in system copy (UI icons only); students use emojis in their content
+
+MICROCOPY EXAMPLES
+- Upload Button: "Share a moment"
+- Empty Feed: "No videos yet. Be the first to post!"
+- Search Placeholder: "Search @username, name, or matricule"
+- Follow Button: "Follow" / "Following" / "Unfollow?"
+- Mute Toggle: "Mute all" / "Unmute"
+- Rate Limit: "Slow down! 5 posts/hour max. Try again in 12 min."
+- Verification Email: "Check your IUGET email to verify your account"
+- Admin Badge: "Campus Admin"
+
+================================================================================
+                           UI COMPONENT PATTERNS
+================================================================================
+
+BOTTOM NAVIGATION
+-----------------
+- Fixed, 4 tabs + center FAB
+- Background: Surface (#16161E) with top border Glass Highlight
+- Active: Primary Purple (#8B5CF6), Filled icon
+- Inactive: Text Muted (#71717A), Outlined icon
+- Center FAB: 56px diameter, Gradient Primary, Shadow Level 4, Plus icon white
+- Safe area: Bottom padding for home indicator
+
+VIDEO FEED CARD
+---------------
+- Full-screen, edge-to-edge video
+- Overlay gradient bottom: transparent → Surface (120px height)
+- Caption: Body Large, Text Primary, max 3 lines → expandable
+- Username: Headline Medium, Text Primary, @username in Text Secondary
+- Right Sidebar: 48px wide, vertical stack, 16px gap
+  - Like: Heart icon 28px, count Label Medium
+  - Comment: MessageSquare 28px, count Label Medium
+  - Share: Share2 28px
+  - Profile: Avatar 36px (circular, Glass Strong border)
+- Double-tap: Heart burst animation at touch point
+
+COMMENT SHEET (Bottom Sheet)
+----------------------------
+- Height: 60% screen, drag handle top-center
+- Background: Surface, top border Glass Highlight
+- Header: "Comments (12)" — Headline Medium
+- List: Body Large, Text Primary, timestamp Body Small Text Muted
+- Input: Fixed bottom, Glass Strong background, rounded full
+- Send: Primary Purple, Label Large, disabled when empty
+
+PROFILE SCREEN
+--------------
+- Header: Cover gradient (Gradient Primary), 200px height
+- Avatar: 96px, centered at bottom of cover (overlap 48px)
+- Stats Row: 3 columns, Followers / Following / Videos — Headline Medium
+- Bio: Body Large, max 3 lines
+- Edit Profile: Secondary button (Glass Strong, Text Primary)
+- Grid: 3 columns, 4px gaps, aspect-ratio 9:16 thumbnails
+- Empty: Centered illustration + "No videos yet"
+
+UPLOAD SCREEN
+-------------
+- Full-screen modal, dark background
+- Video Preview: 16:9, top 60% of screen
+- Thumbnail: Auto-generated, shown as overlay badge
+- Caption Input: Glass Strong, Body Large, char counter (200)
+- Progress Bar: Gradient Primary, 4px height, rounded full
+- Actions: Cancel (Ghost) / Post (Primary Purple FAB style)
+
+SEARCH SCREEN
+-------------
+- Search Bar: Top, fixed, Glass Strong, Search icon left
+- Results: List, 72px height items
+- Item: Avatar 48px, Username Headline Medium, Masked Matricule Body Small, Bio Body Small (2 lines)
+- Empty: "No students found" + search icon
+
+ANNOUNCEMENTS (Admin Channel)
+-----------------------------
+- Separate tab in Home (segmented control: For You / Following / Announcements)
+- Card: Glass Strong, 16px padding, Gradient Primary left border (4px)
+- Title: Headline Medium, Text Primary
+- Body: Body Large, Text Secondary
+- Attachment: Document icon + name, Tertiary Blue, tap → open in browser
+- Badge: Red dot on Announcements tab + Profile tab (unread count)
+
+================================================================================
+                           INTERACTION PATTERNS
+================================================================================
+
+NAVIGATION
+- Stack navigation within tabs
+- Modal sheets for: Comments, Edit Profile, Upload, Search Results detail
+- Swipe down to dismiss sheets (except Upload — requires explicit cancel)
+- Tab switch: Instant, no animation (standard tab behavior)
+
+GESTURES
+- Vertical swipe (feed): Next/Previous video (snap)
+- Double tap (video): Like + heart burst
+- Long press (video): Report / Delete (owner) menu
+- Long press (own comment): Delete confirmation
+- Pull to refresh: Feed only (For You / Following)
+- Drag handle (sheets): Drag to resize/dismiss
+
+FEEDBACK
+- Haptic: Light tap on button press, Medium on double-tap like, Heavy on post success
+- Visual: Button press scale 0.96 (120ms), Heart burst, Progress bars, Skeleton loaders
+- Audio: None (app is mute-default, user controls volume)
+
+LOADING STATES
+- Skeleton: Gradient Surface pulse (1000ms) — Feed cards, Profile grid, Search results
+- Inline: Spinner 20px (Primary Purple) — Button submissions, Upload progress
+- Full-screen: Only on initial auth load — Logo + Gradient Primary pulse
+
+================================================================================
+                           CONTENT GUIDELINES
+================================================================================
+
+VIDEO SPECS (Enforced Client-Side)
+- Max Duration: 60 seconds
+- Max File Size: 30 MB (70 MB in some builds — enforce 30 MB)
+- Format: MP4, MOV (Cloudinary transcodes to f_auto)
+- Orientation: Vertical (9:16) preferred, any accepted
+- Thumbnail: Auto-generated at 1s mark (expo-video-thumbnails)
+
+CAPTIONS
+- Max 200 characters
+- Sanitized: HTML tags stripped
+- Hashtags: Not parsed as links (MVP) — plain text
+- Mentions: Not parsed (MVP) — plain text
+
+PROFILES
+- Username: @ + alphanumeric + underscore, 3-20 chars, unique
+- Display Name: 1-30 chars
+- Bio: Max 150 chars, plain text
+- Avatar: Square, min 100x100, max 5MB, Cloudinary f_auto,q_auto,w_100,c_fill,g_face
+
+ANNOUNCEMENTS (Admin Only)
+- Title: Max 100 chars
+- Body: Max 2000 chars
+- Image: Optional, same as video thumbnail specs
+- Document: PDF/TXT, max 10MB, Cloudinary raw upload
+
+================================================================================
+                           ACCESSIBILITY
+================================================================================
+
+- Dark mode only — ensure 4.5:1 contrast minimum (WCAG AA)
+- Text Primary (#FFFFFF) on Surface (#16161E) = 15.3:1 ✓
+- Text Secondary (#A1A1AA) on Surface = 7.2:1 ✓
+- Primary Purple (#8B5CF6) on White = 4.6:1 ✓ (large text)
+- Pink (#EC4899) on White = 4.1:1 ⚠ (use on dark only, or bold)
+- Touch targets: Minimum 44x44pt (iOS) / 48x48dp (Android)
+- Semantic labels on all icon-only buttons
+- Dynamic Type: Support system font scaling (Body Large → up to 24px)
+- Reduce Motion: Respect prefers-reduced-motion (disable heart burst, skeleton pulse)
+- Screen Reader: Test with VoiceOver / TalkBack — all interactive elements labeled
+
+================================================================================
+                           PLATFORM ADAPTATIONS
+================================================================================
+
+iOS (Expo)
+- Safe Area: Top (Dynamic Island/notch), Bottom (Home indicator)
+- SecureStore: Native, 2048 byte limit → ChunkedSecureStoreAdapter required
+- Video Player: expo-video (AVPlayer backend)
+- Haptics: expo-haptics (impactLight, impactMedium, impactHeavy)
+- Share Sheet: Native iOS share (expo-sharing)
+- Keyboard: Avoids bottom sheets automatically
+
+ANDROID (Expo)
+- SecureStore: 2048 byte limit → ChunkedSecureStoreAdapter required
+- Video Player: expo-video (Media3/ExoPlayer backend)
+- Back Gesture: System back dismisses sheets/modals
+- Edge-to-Edge: Enabled, status bar translucent
+- Keyboard: WindowSoftInputMode.adjustResize for sheets
+
+WEB (Not Supported in MVP)
+- Responsive breakpoints not required
+- No PWA manifest needed
+
+================================================================================
+                           BRAND ASSETS CHECKLIST
+================================================================================
+
+APP ICONS (Expo / EAS)
+- icon.png: 1024x1024 (App Store / Play Store)
+- adaptive-icon.png: 1024x1024 (Android adaptive, foreground + background)
+- favicon.png: 48x48 (Web manifest fallback)
+- splash-icon.png: 512x512 (Splash screen center logo)
+
+SPLASH SCREEN
+- Background: Primary Dark (#0A0A0F)
+- Logo: Centered, 40% screen width
+- Animation: Fade in 300ms → hold 500ms → fade out 300ms → transition to auth
+
+LOGOS
+- Primary: "U-Buzz" wordmark + buzz icon (stylized play button with sound waves)
+- Icon Only: Stylized play button in Gradient Primary circle
+- Horizontal: Icon + Wordmark (24px gap)
+- Minimum Size: 24px height (icon), 120px width (wordmark)
+- Clear Space: 1x icon height on all sides
+
+LOGO RESTRICTIONS
+- NO MODIFICATIONS: Do not stretch, rotate, skew, recolor, or apply effects (shadows, gradients, outlines) to the logo
+- NO RECONSTRUCTION: Do not recreate the logo from scratch; always use provided SVG/PNG assets
+- NO CONTAINED SHAPES: Do not place the logo inside other shapes (circles, squares, badges) unless using the provided Icon Only variant
+- NO TAGLINE LOCKUP: Do not lock "IUGET's Campus Network" or any tagline to the logo — use separately with 32px minimum spacing
+- NO CO-LOCATION WITH OTHER LOGOS: Do not place U-Buzz logo directly adjacent to partner/institutional logos without a 2x clear space divider
+- MINIMUM CONTRAST: Logo must meet 4.5:1 contrast against background; use Icon Only (white) on dark media, Primary (gradient) on light media
+- BACKGROUND RESTRICTIONS: 
+  * Primary logo: Only on Brand Dark (#0A0A0F), Surface (#16161E), or pure white
+  * Icon Only: On Gradient Primary, Brand Dark, or pure white — never on photos, patterns, or low-contrast colors
+- PROHIBITED USES:
+  * As watermark on user-generated content
+  * In user profiles, video overlays, or comments
+  * Merchandise without written brand approval
+  * Modified for holidays/events (no Santa hats, flag overlays, etc.)
+  * Animated unless using approved motion system (200ms ease-out scale on tap)
+- APP ICON ONLY: The app icon (1024x1024, adaptive icon) is a separate asset — do not use it as marketing logo
+- ATTRIBUTION: When used in press/partnerships, include "U-Buzz — IUGET's Campus Network" text nearby
+- ASSET SOURCE: Always pull from /brand-assets/ (SVG for print, PNG @2x/@3x for digital) — no screenshots from app
+
+COLOR VARIABLES (CSS / Tailwind / NativeWind)
+--color-primary: #8B5CF6
+--color-primary-hover: #A78BFA
+--color-secondary: #EC4899
+--color-secondary-hover: #F472B6
+--color-tertiary: #3B82F6
+--color-bg: #0A0A0F
+--color-surface: #16161E
+--color-glass: rgba(255,255,255,0.08)
+--color-glass-strong: rgba(255,255,255,0.12)
+--color-text: #FFFFFF
+--color-text-secondary: #A1A1AA
+--color-text-muted: #71717A
+--color-success: #22C55E
+--color-warning: #F59E0B
+--color-error: #EF4444
+
+================================================================================
+                           MARKETING & COMMUNICATION
+================================================================================
+
+APP STORE DESCRIPTION (Short)
+U-Buzz — IUGET's exclusive campus video network. Share moments, discover creators, 
+stay informed. Private. Data-smart. Built for Cameroon.
+
+APP STORE KEYWORDS
+campus, university, social, video, IUGET, Douala, Cameroon, student, short-video
+
+PRESS / PITCH ONE-LINER
+"TikTok for campus — but private, data-conscious, and built for IUGET students 
+in Douala."
+
+LAUNCH TAGLINE VARIANTS
+- "Your Campus. Your Buzz."
+- "Where IUGET Comes Alive."
+- "Short Videos. Real Campus."
+- "Post. Watch. Belong."
+
+================================================================================
+                           DESIGN TOKENS EXPORT (JSON)
+================================================================================
+
+{
+  "colors": {
+    "primary": { "DEFAULT": "#8B5CF6", "hover": "#A78BFA" },
+    "secondary": { "DEFAULT": "#EC4899", "hover": "#F472B6" },
+    "tertiary": { "DEFAULT": "#3B82F6" },
+    "background": { "DEFAULT": "#0A0A0F", "surface": "#16161E" },
+    "glass": { "DEFAULT": "rgba(255,255,255,0.08)", "strong": "rgba(255,255,255,0.12)" },
+    "text": { "primary": "#FFFFFF", "secondary": "#A1A1AA", "muted": "#71717A", "inverse": "#0A0A0F" },
+    "status": { "success": "#22C55E", "warning": "#F59E0B", "error": "#EF4444" },
+    "gradients": {
+      "primary": "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
+      "surface": "linear-gradient(135deg, #16161E 0%, #0A0A0F 100%)",
+      "glass": "linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(236,72,153,0.15) 100%)"
+    }
+  },
+  "spacing": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32, "2xl": 48 },
+  "radius": { "xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 24, "full": 9999 },
+  "shadows": {
+    "glass": "0 1px 2px rgba(0,0,0,0.15)",
+    "card": "0 4px 12px rgba(0,0,0,0.25)",
+    "modal": "0 12px 32px rgba(0,0,0,0.35)",
+    "fab": "0 8px 24px rgba(139,92,246,0.4)"
+  },
+  "typography": {
+    "fontFamily": "System",
+    "sizes": {
+      "displayLarge": { "fontSize": 32, "lineHeight": 40, "fontWeight": "700" },
+      "displayMedium": { "fontSize": 28, "lineHeight": 36, "fontWeight": "700" },
+      "headlineLarge": { "fontSize": 22, "lineHeight": 30, "fontWeight": "600" },
+      "headlineMedium": { "fontSize": 18, "lineHeight": 26, "fontWeight": "600" },
+      "bodyLarge": { "fontSize": 16, "lineHeight": 24, "fontWeight": "400" },
+      "bodyMedium": { "fontSize": 14, "lineHeight": 20, "fontWeight": "400" },
+      "bodySmall": { "fontSize": 12, "lineHeight": 16, "fontWeight": "400" },
+      "labelLarge": { "fontSize": 14, "lineHeight": 20, "fontWeight": "500" },
+      "labelMedium": { "fontSize": 12, "lineHeight": 16, "fontWeight": "500" }
+    }
+  },
+  "animation": {
+    "easing": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    "durations": { "fast": 120, "normal": 200, "slow": 300 }
+  }
+}
+
+================================================================================
+                           BRAND GOVERNANCE
+================================================================================
+
+USAGE PERMISSIONS
+- Internal team: Full access to all assets and guidelines
+- External partners: Logo usage requires approval; no modification of assets
+- Students/User-generated: No brand assets in user content (watermarks not required)
+
+VERSION CONTROL
+- This document lives at: /brand_identity.txt (project root)
+- Version: 1.0.0
+- Last Updated: 2026-07-10
+- Owner: U-Buzz Core Team
+- Review Cycle: Per major release (v1.0, v1.1, v2.0)
+
+CHANGE LOG
+- v1.0.0 (2026-07-10): Initial brand identity established from project docs
+
+================================================================================
+                              END OF BRAND IDENTITY
+================================================================================

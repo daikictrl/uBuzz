@@ -61,7 +61,7 @@
 ## Validation Rules
 
 All validation uses functions from src/lib/validation.ts:
-- isValidMatricule(value) — must match /^IU[0-9]{4,}$/i
+- isValidMatricule(value) — must match /^IU[0-9]{4,6}$/i
 - isValidEmail(value) — standard email format
 - isValidUsername(value) — 3-20 chars, letters/numbers/underscores
 

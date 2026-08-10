@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>U-Buzz — Project Details</title>
+  
+  <!-- Inter Font from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Mermaid.js for drawing diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      themeVariables: {
+        background: '#0f172a',      // Match diagram-box background
+        primaryColor: '#1e293b',     // Node background: Slate 800
+        primaryTextColor: '#f1f5f9', // Node text: Slate 100
+        primaryBorderColor: '#4f46e5', // Node border: Indigo 600
+        lineColor: '#818cf8',        // Arrow lines: Indigo 400
+        secondaryColor: '#0f172a',   // Secondary node background
+        tertiaryColor: '#1e293b',    // Tertiary node background
+        actorBkg: '#1e293b',         // Actor background for sequence diagram
+        actorBorder: '#4f46e5',      // Actor border
+        actorTextColor: '#f1f5f9',   // Actor text
+        signalColor: '#818cf8',      // Signal lines/arrows
+        signalTextColor: '#e2e8f0',  // Signal text labels
+        labelBoxBkgColor: '#1e293b', // Signal labels background box
+        labelBoxBorderColor: '#334155', // Signal labels border
+        labelTextColor: '#f1f5f9',   // Signal label text
+        loopBkgColor: '#1e293b',     // Loop block background
+        noteBkgColor: '#fef08a',     // Yellow note background
+        noteBorderColor: '#facc15',  // Note border
+        noteTextColor: '#854d0e'     // Note text
+      }
+    });
+  </script>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #cbd5e1;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #f472b6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Print styling to hide instructions when exporting to PDF */
+    @media print {
+      body {
+        background-color: #fff !important;
+        color: #000 !important;
+        padding: 0;
+      }
+      .container {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        background-color: #fff !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      h1, h2, h3, p, li, strong {
+        color: #000 !important;
+      }
+
+      /* PDF-only diagram theme: dark shapes with white readable labels. */
+      .diagram-box,
+      .diagram-box svg {
+        background: #0f172a !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .diagram-box {
+        border: 1px solid #334155 !important;
+      }
+      .diagram-box svg {
+        filter: none !important;
+      }
+
+      .diagram-box svg .node rect,
+      .diagram-box svg .node circle,
+      .diagram-box svg .node ellipse,
+      .diagram-box svg .node polygon,
+      .diagram-box svg .node path,
+      .diagram-box svg rect.actor,
+      .diagram-box svg .entityBox,
+      .diagram-box svg .classBox,
+      .diagram-box svg .labelBox,
+      .diagram-box svg .loopLine,
+      .diagram-box svg .note,
+      .diagram-box svg .cluster rect {
+        fill: #1e293b !important;
+        stroke: #818cf8 !important;
+      }
+      .diagram-box svg .edgePath path,
+      .diagram-box svg .flowchart-link,
+      .diagram-box svg .messageLine0,
+      .diagram-box svg .messageLine1,
+      .diagram-box svg .relationshipLine {
+        stroke: #c4b5fd !important;
+      }
+      .diagram-box svg marker path,
+      .diagram-box svg marker polygon {
+        fill: #c4b5fd !important;
+        stroke: #c4b5fd !important;
+      }
+
+      .diagram-box svg text,
+      .diagram-box svg text *,
+      .diagram-box svg tspan,
+      .diagram-box svg foreignObject,
+      .diagram-box svg foreignObject *,
+      .diagram-box svg .nodeLabel,
+      .diagram-box svg .edgeLabel,
+      .diagram-box svg .label span,
+      .diagram-box svg text.actor,
+      .diagram-box svg text.messageText,
+      .diagram-box svg text.labelText,
+      .diagram-box svg text.loopText,
+      .diagram-box svg text.noteText,
+      .diagram-box svg text.entityLabel {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: none !important;
+      }
+    }
+    .header-area {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.025em;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      border-left: 4px solid var(--primary);
+      padding-left: 12px;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    ul, ol {
+      margin-bottom: 20px;
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .diagram-box {
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: auto;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .diagram-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px -8px rgba(99, 102, 241, 0.3);
+      border-color: var(--primary);
+    }
+
+    .diagram-box::after {
+      content: '🔍 Click to expand';
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 0.75rem;
+      background-color: rgba(15, 23, 42, 0.85);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      border: 1px solid var(--border);
+    }
+
+    .diagram-box:hover::after {
+      opacity: 1;
+    }
+
+    code {
+      font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: var(--accent);
+    }
+
+    .print-bar {
+      width: 400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .print-btn {
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .print-btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(15, 23, 42, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(8px);
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-content {
+      position: relative;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 24px 24px 24px;
+      width: 90vw;
+      max-width: 1200px;
+      max-height: 90vh;
+      overflow: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 8px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 32px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--accent);
+    }
+
+    #modal-body {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-body svg {
+      width: 100%;
+      max-height: 80vh;
+      height: auto !important;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Action Bar (Not shown in print) -->
+    <div class="print-bar no-print">
+      <span style="font-size: 0.9rem; color: var(--text-muted);">Export as a clean PDF! 😎</span>
+      <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+    </div>
+
+    <div class="header-area">
+      <h1>U-Buzz — Campus Social Network</h1>
+      <div class="subtitle">Complete Technical Project Overview & Architecture Documentation</div>
+    </div>
+
+    <p>U-Buzz is a campus-exclusive, short-video social platform modeled after TikTok and Instagram Reels, tailored specifically for the student body of <strong>IUGET (Institut Universitaire des Grandes Ecoles des Tropiques)</strong>, Douala, Cameroon.</p>
+
+    <h2>1. Real-Life Issues Addressed</h2>
+    
+    <h3>A. The Hyper-Local Communication Gap</h3>
+    <p>Traditional social media platforms are global and algorithmically geared toward massive audiences. This makes it difficult for students on a single campus to share local announcements, showcase student life, and build peer relationships. U-Buzz restricts content entirely to the local IUGET campus.</p>
+
+    <h3>B. High Bandwidth & Mobile Data Costs (Cameroon Context)</h3>
+    <p>In Cameroon, mobile internet data is expensive. Streaming raw high-definition video feeds would deplete student data packages instantly. U-Buzz addresses this by integrating a strict <strong>media optimization pipeline</strong> using <strong>Cloudinary</strong>, enforcing low bitrates (capped at 1 Mbps), resolution limits (720p), and device-compatible dynamic transcoding.</p>
+
+    <h3>C. Trust & Identity Without Official Academic API Integration</h3>
+    <p>IUGET has no public database/API for verifying student identities. U-Buzz implements a self-verifying, honor-system validation:</p>
+    <ul>
+      <li>SignUp requires a matricule format strictly validated on both client and database levels via the regex constraint: <code>^IU[0-9]{4,6}$</code> (e.g. <code>IU2024</code>, <code>IU10045</code>).</li>
+      <li>A database uniqueness constraint enforces a <em>one-matricule-per-account</em> policy.</li>
+      <li>Privacy filters mask matricules in search results (e.g., displaying <code>IU****45</code> instead of the raw matricule) to protect student identities.</li>
+    </ul>
+
+    <h3>D. Official Campus Communications</h3>
+    <p>To prevent administrative announcements from getting lost in a general feed of short videos, U-Buzz introduces a structured, admin-only announcements channel. This allows the school administration (using pre-configured credentials, bypassing standard matricule registrations) to publish highlights and official notices directly to students in a dedicated feed.</p>
+
+    <h2>2. Core Tech Stack</h2>
+    
+    <div class="diagram-box">
+      <div class="mermaid">
+        graph TD
+            A[React Native / Expo Frontend] -->|REST / API Upload| B((Cloudinary Media CDN))
+            A -->|Supabase Client SDK| C((Supabase Backend))
+            C -->|PostgreSQL DB| D[(Database & RLS)]
+            C -->|Realtime Channels| A
+      </div>
+    </div>
+
+    <h3>Frontend (Mobile App)</h3>
+    <ul>
+      <li><strong>Framework</strong>: React Native with Expo (Managed Workflow)</li>
+      <li><strong>Programming Language</strong>: TypeScript</li>
+      <li><strong>Video Playback Engine</strong>: <code>expo-video</code> (highly optimized native-backed video player)</li>
+      <li><strong>Document Picker</strong>: <code>expo-document-picker</code> (allows admins to select PDF and text attachments)</li>
+      <li><strong>Local Storage</strong>: <code>AsyncStorage</code> (used for global mute toggles, rate limiting, tab badge view timestamps, and temporary state)</li>
+      <li><strong>Secure Storage</strong>: <code>expo-secure-store</code> with a custom <strong>ChunkedSecureStoreAdapter</strong> to split JWT payloads exceeding Android's 2048-byte limit.</li>
+    </ul>
+
+    <h3>Backend & Infrastructure (Serverless)</h3>
+    <ul>
+      <li><strong>Backend as a Service (BaaS)</strong>: Supabase
+        <ul>
+          <li><strong>Database</strong>: PostgreSQL (relational storage with schema rules, indexes, and triggers)</li>
+          <li><strong>Authentication</strong>: Supabase Auth (email-based login/signup with custom session persistence)</li>
+          <li><strong>Realtime Services</strong>: Supabase Realtime (Postgres Changes subscription for live comments and notifications)</li>
+        </ul>
+      </li>
+      <li><strong>Media CDN & Optimization</strong>: Cloudinary (unsigned direct multipart uploads, dynamic transformations, and globally distributed CDN caches)</li>
+    </ul>
+
+    <h2>3. Detailed System Architecture</h2>
+    <p>U-Buzz is designed around a decoupled, serverless client-service architecture. The React Native mobile client handles the presentation, local state, and direct media streaming, while Supabase provides transactional database operations, user authentication, and realtime websocket synchronization, and Cloudinary acts as the serverless media optimization and storage pipeline.</p>
+
+    <h3>Architectural Blueprint</h3>
+    <div class="diagram-box">
+      <div class="mermaid">
+        graph TB
+            subgraph Client [Mobile Client Layer — React Native / Expo]
+                direction TB
+                View[UI Layer: Screens & Bottom Sheets]
+                Service[Service Layer: Supabase SDK & Cloudinary Uploaders]
+                Store[Storage Layer: AsyncStorage & Chunked SecureStore]
+                View --> Service
+                View --> Store
+            end
+
+            subgraph CloudinaryService [Media Service Layer — Cloudinary]
+                Upload[Upload API: Raw Video/Image Direct Uploads]
+                Transform[Transformation API: On-The-Fly Transcoding & Compressions]
+                CDN[Cloudinary CDN: Globally Cached Media Delivery]
+                Upload --> Transform
+                Transform --> CDN
+            end
+
+            subgraph SupabaseService [Backend BaaS Layer — Supabase]
+                direction TB
+                Auth[Auth Service: JWT Session Manager]
+                Realtime[Realtime Gateway: WebSockets Broadcasting]
+                Postgres[(PostgreSQL Engine)]
+                Trigger[PL/pgSQL Trigger: handle_new_user]
+                RLS[RLS Security Policies]
+
+                Auth --> Postgres
+                Realtime --> Postgres
+                Postgres --> Trigger
+                Postgres --> RLS
+            end
+
+            %% Communication paths
+            Service -->|Unsigned POST Upload| Upload
+            CDN -->|Dynamic transformed URL stream| View
+            Service -->|SQL queries / mutations| Postgres
+            Realtime -.->|Live Postgres changes| Service
+            Auth -.->|JWT tokens| Store
+      </div>
+    </div>
+
+    <h3>Architectural Components</h3>
+    
+    <h4>A. Mobile Presentation Layer (Client)</h4>
+    <ul>
+      <li><strong>View Layer (React Native / Expo)</strong>: Renders standard pages (<code>HomeScreen</code> feed, profile grid, comments sheets). Views are lightweight and depend on layout components and validation scripts.</li>
+      <li><strong>Service Integrations</strong>: Utilizes the Supabase JS client for authentication and database queries, and a custom direct-to-Cloudinary upload agent for media assets.</li>
+      <li><strong>Secure Storage Layer</strong>: Uses standard <code>AsyncStorage</code> for global settings and persistent state, and <code>expo-secure-store</code> wrapped in a custom partition adapter (<code>ChunkedSecureStoreAdapter</code>) to chunk session tokens larger than 2KB on Android devices.</li>
+    </ul>
+
+    <h4>B. Database & Auth Backend Layer (Supabase)</h4>
+    <ul>
+      <li><strong>Auth System</strong>: Direct user login, registration, and email OTP flows.</li>
+      <li><strong>PostgreSQL Engine</strong>: Handles relational integrity. Runs a registration trigger (<code>handle_new_user()</code>) and schema controls. Tracks administrative roles using an <code>is_admin</code> attribute in the user profile.</li>
+      <li><strong>Row-Level Security (RLS)</strong>: Enforces security directly in PostgreSQL. Any SQL query issued from the client is validated by evaluating the requester's JWT. RLS restricts announcement creation and deletion exclusively to authenticated admin profiles.</li>
+      <li><strong>Realtime Gateway</strong>: Uses PostgreSQL replication channels to broadcast mutations (such as new comments and announcements) to listening mobile clients over WebSockets.</li>
+    </ul>
+
+    <h4>C. Optimized Media CDN Layer (Cloudinary)</h4>
+    <ul>
+      <li><strong>Unsigned Upload Endpoint</strong>: Bypasses the need for a backend proxy. The mobile client sends media directly to Cloudinary using secure, restricted configuration profiles.</li>
+      <li><strong>Transformation Engine</strong>: Transcodes and optimizes media assets on-the-fly when requested by the mobile client, reducing bandwidth usage.</li>
+    </ul>
+
+    <h2>4. Communication Flows & Data Pipelines</h2>
+
+    <h3>A. Video Upload Pipeline</h3>
+    <p>When a student selects a video to post, the media flows through a multi-step upload pipeline:</p>
+
+    <div class="diagram-box">
+      <div class="mermaid">
+        sequenceDiagram
+            autonumber
+            actor Student
+            participant App as Expo Mobile App
+            participant Cloudinary as Cloudinary API
+            participant Supabase as Supabase Database
+
+            Student->>App: Choose Video & Write Caption
+            App->>App: Lock UI (preparing phase)
+            App->>App: Verify file size (&lt;30MB) and duration (&lt;60s)
+            App->>App: Generate Thumbnail on-device
+            App->>Cloudinary: Upload Video (Multipart POST /video/upload)
+            Cloudinary-->>App: Return secure_url & public_id
+            App->>Cloudinary: Upload Thumbnail (Multipart POST /image/upload)
+            Cloudinary-->>App: Return secure_url
+            App->>Supabase: Insert Video Metadata (user_id, video_url, thumbnail_url, caption)
+            Supabase-->>App: Insert Success (201 Created)
+            App->>Student: Navigate back to Home Feed
+      </div>
+    </div>
+
+    <h3>B. Realtime Comment Synchronisation</h3>
+    <p>Comments are synchronized instantly using Supabase's Realtime Postgres Changes listener:</p>
+
+    <div class="diagram-box">
+      <div class="mermaid">
+        sequenceDiagram
+            autonumber
+            actor Student A
+            participant App A as Mobile Client A
+            participant Supabase as Supabase Realtime
+            participant App B as Mobile Client B
+            actor Student B
+
+            App B->>Supabase: Subscribe to 'comments' table changes for video_id
+            Note over App B, Supabase: Channel Active
+            
+            Student A->>App A: Type & Send Comment
+            App A->>Supabase: INSERT into comments table
+            Supabase-->>App A: Insert Confirmed
+            Supabase->>App B: Broadcast 'INSERT' event payload
+            App B->>App B: Query user details & append new comment to UI list
+            App B->>Student B: New comment appears instantly
+      </div>
+    </div>
+
+    <h3>C. Realtime Announcement & Document Flow</h3>
+    <p>When the school administration publishes a campus notice, it is broadcast to all students in real time:</p>
+    <div class="diagram-box">
+      <div class="mermaid">
+        sequenceDiagram
+            autonumber
+            actor Admin
+            participant App as Mobile Client (Admin)
+            participant Cloudinary as Cloudinary API
+            participant Supabase as Supabase Database/Realtime
+            participant StudentApp as Mobile Client (Student)
+
+            Admin->>App: Write Announcement & Attach PDF
+            App->>Cloudinary: Upload PDF Document (Multipart POST to /raw/upload)
+            Cloudinary-->>App: Return secure_url & filename
+            App->>Supabase: Insert Announcement (title, body, document_url, document_name)
+            Supabase-->>App: Insert Success (201 Created)
+            Supabase->>StudentApp: Broadcast Realtime INSERT Event
+            StudentApp->>StudentApp: Compare timestamp against AsyncStorage last-viewed
+            StudentApp->>StudentApp: Increment announcementBadgeCount (Light up red dot)
+      </div>
+    </div>
+
+    <h2>5. Database Schema & RLS Model</h2>
+    <p>The database is built on PostgreSQL, utilizing Row Level Security (RLS) policies to protect student data.</p>
+
+    <div class="diagram-box">
+      <div class="mermaid">
+        erDiagram
+            users ||--o{ videos : "uploads"
+            users ||--o{ likes : "likes"
+            users ||--o{ comments : "writes"
+            users ||--o{ follows : "follower/following"
+            users ||--o{ announcements : "posts"
+            videos ||--o{ likes : "receives"
+            videos ||--o{ comments : "has"
+            videos ||--o{ reports : "reported"
+      </div>
+    </div>
+
+    <h3>Table Structure</h3>
+    <ol>
+      <li><strong><code>users</code></strong>: Public profiles of students. Enforces unique matricules and emails. Contains <code>is_admin</code> boolean flag (defaults to <code>false</code>).</li>
+      <li><strong><code>videos</code></strong>: Metadata of uploaded videos. Stores Cloudinary <code>secure_url</code> and <code>cloudinary_public_id</code>.</li>
+      <li><strong><code>likes</code></strong>: Relational join table mapping users to videos they liked. Enforces unique combinations to prevent double-likes.</li>
+      <li><strong><code>comments</code></strong>: Stores the text bodies of comments linked to a user and a video.</li>
+      <li><strong><code>follows</code></strong>: Self-referencing join table mapping <code>follower_id</code> to <code>following_id</code>.</li>
+      <li><strong><code>reports</code></strong>: Stores reports on abusive profiles or videos (accessible only by administrators).</li>
+      <li><strong><code>announcements</code></strong>: Stores administrative highlights and notices. Contains title, body, optional image URL, optional raw document URL, and document name. Protected by RLS (insert/delete restricted to admin profiles).</li>
+    </ol>
+
+    <h3>Database Trigger: <code>handle_new_user</code></h3>
+    <p>On SignUp, Supabase Auth inserts a row into its internal <code>auth.users</code> table. A custom database trigger is automatically executed:</p>
+    <ul>
+      <li>Creates a matching public user record in <code>public.users</code>.</li>
+      <li>Resolves missing/invalid matricules by auto-generating a unique valid matricule.</li>
+      <li>Formats and normalizes usernames, ensuring no duplicate accounts exist.</li>
+    </ul>
+
+    <h2>6. Performance & Media Optimisation Strategy</h2>
+    <p>To ensure a smooth TikTok-style feed without buffering lag, the project implements strict optimizations:</p>
+
+    <h3>A. Cloudinary On-The-Fly Transformations</h3>
+    <p>All URLs retrieved from the database are transformed in real-time before being loaded into image/video containers:</p>
+    <ul>
+      <li><strong>Videos</strong>: Parameters <code>f_auto,q_auto,br_1m,w_720</code> are appended. This transcodes the format based on the client device (e.g., WebM for Android, HEVC/MP4 for iOS), drops video quality to a compressed target, caps the bandwidth to <strong>1 Mbps</strong>, and scales resolution down to <strong>720p</strong>.</li>
+      <li><strong>Avatars</strong>: Parameters <code>f_auto,q_auto,w_100,c_fill,g_face</code> are used. This crops the image around the user's face dynamically and shrinks it to 100px.</li>
+      <li><strong>Grid Thumbnails</strong>: Parameters <code>f_auto,q_auto,w_400,c_fill</code> are used for fast-loading profile layouts.</li>
+    </ul>
+
+    <h3>B. FlatList Performance Tuning</h3>
+    <p>The feed uses React Native <code>FlatList</code> configured for ultra-low memory consumption:</p>
+    <ul>
+      <li><code>removeClippedSubviews={true}</code>: Unmounts components off-screen to free up GPU memory.</li>
+      <li><code>windowSize={3}</code>: Preloads only 1 item ahead and retains 1 item behind the visible screen.</li>
+      <li><code>maxToRenderPerBatch={2}</code>: Minimizes frame drops during rapid vertical scrolling.</li>
+      <li><code>getItemLayout</code>: Enforces predefined height layouts so the UI thread doesn't calculate layouts dynamically.</li>
+    </ul>
+
+    <h3>C. Realtime Badges & Document Delivery</h3>
+    <p>To maintain high responsiveness and prevent battery drainage:</p>
+    <ul>
+      <li><strong>Unread Indicators</strong>: The app checks the latest announcement timestamp against a local <code>AsyncStorage</code> value on launch rather than constantly querying. A lightweight Supabase Realtime channel updates the badge state in memory for active clients.</li>
+      <li><strong>Document Delivery</strong>: Document attachments are uploaded to Cloudinary's secure raw directory and delivered straight to system browsers using React Native's <code>Linking</code> library, bypassing internal web view rendering overhead.</li>
+    </ul>
+
+  </div>
+
+  <!-- Diagram Preview Modal -->
+  <div id="diagram-modal" class="modal-overlay no-print" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()" aria-label="Close modal">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    // Modal zoom functionality for diagrams
+    const modal = document.getElementById('diagram-modal');
+    const modalBody = document.getElementById('modal-body');
+
+    function openModal(svgContent) {
+      modalBody.innerHTML = svgContent;
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden'; // Disable scroll on body
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      modalBody.innerHTML = '';
+      document.body.style.overflow = ''; // Restore scroll
+    }
+
+    // Close modal when pressing Escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Add click event listeners to all diagram boxes after load
+    window.addEventListener('load', () => {
+      // We wait a bit to ensure Mermaid has finished rendering
+      setTimeout(() => {
+        const diagramBoxes = document.querySelectorAll('.diagram-box');
+        diagramBoxes.forEach(box => {
+          box.addEventListener('click', () => {
+            // Find the rendered SVG inside the diagram box
+            const svg = box.querySelector('svg');
+            if (svg) {
+              // Open modal with a clone of the SVG
+              openModal(svg.outerHTML);
+            }
+          });
+        });
+      }, 500);
+    });
+  </script>
+
+</body>
+</html>

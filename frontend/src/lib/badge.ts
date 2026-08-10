@@ -35,3 +35,38 @@ export function useBadgeCount() {
 
   return count;
 }
+
+let currentAnnouncementCount = 0;
+const announcementListeners = new Set<(count: number) => void>();
+
+export const announcementBadgeManager = {
+  getBadgeCount: () => currentAnnouncementCount,
+  increment: () => {
+    currentAnnouncementCount += 1;
+    announcementListeners.forEach((listener) => listener(currentAnnouncementCount));
+  },
+  reset: () => {
+    currentAnnouncementCount = 0;
+    announcementListeners.forEach((listener) => listener(currentAnnouncementCount));
+  },
+  addListener: (listener: (count: number) => void) => {
+    announcementListeners.add(listener);
+    return () => {
+      announcementListeners.delete(listener);
+    };
+  },
+};
+
+export function useAnnouncementBadgeCount() {
+  const [count, setCount] = useState(currentAnnouncementCount);
+
+  useEffect(() => {
+    setCount(announcementBadgeManager.getBadgeCount());
+    
+    return announcementBadgeManager.addListener((newCount) => {
+      setCount(newCount);
+    });
+  }, []);
+
+  return count;
+}

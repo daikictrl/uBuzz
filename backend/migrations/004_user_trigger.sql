@@ -43,8 +43,8 @@ BEGIN
   -- Extract matricule safely
   v_matricule := UPPER(NULLIF(TRIM(new.raw_user_meta_data->>'matricule'), ''));
   
-  -- If matricule is missing or invalid format, generate a unique valid one (must match ^IU[0-9]{4,}$)
-  IF v_matricule IS NULL OR NOT (v_matricule ~ '^IU[0-9]{4,}$') THEN
+  -- If matricule is missing or invalid format, generate a unique valid one (must match ^IU[0-9]{4,6}$)
+  IF v_matricule IS NULL OR NOT (v_matricule ~ '^IU[0-9]{4,6}$') THEN
     v_retry_count := 0;
     LOOP
       v_matricule := 'IU' || floor(random() * 90000 + 10000)::integer::text;
@@ -56,8 +56,8 @@ BEGIN
       
       v_retry_count := v_retry_count + 1;
       IF v_retry_count >= 5 THEN
-        -- Fallback: generate a larger random number to satisfy constraint and minimize collision
-        v_matricule := 'IU' || floor(random() * 90000000 + 10000000)::bigint::text;
+        -- Fallback: generate a 6-digit random number to satisfy constraint and minimize collision
+        v_matricule := 'IU' || floor(random() * 900000 + 100000)::bigint::text;
         EXIT;
       END IF;
     END LOOP;

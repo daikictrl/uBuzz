@@ -1,11 +1,11 @@
 export function isValidMatricule(value: string): { valid: boolean; error: string } {
   const normalizedValue = value.trim().toUpperCase();
-  const matriculeRegex = /^IU[0-9]{4,}$/;
+  const matriculeRegex = /^IU[0-9]{4,6}$/;
   
   if (!matriculeRegex.test(normalizedValue)) {
     return {
       valid: false,
-      error: "Invalid matricule. Must start with 'IU' followed by at least 4 digits (e.g. IU2024)."
+      error: "Invalid matricule. Must start with 'IU' followed by 4 to 6 digits (e.g. IU2024)."
     };
   }
   

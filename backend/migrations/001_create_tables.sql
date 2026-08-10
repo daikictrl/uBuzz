@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email TEXT NOT NULL UNIQUE,
-  matricule TEXT NOT NULL UNIQUE CHECK (matricule ~ '^IU[0-9]{4,}$'),
+  matricule TEXT NOT NULL UNIQUE CHECK (matricule ~ '^IU[0-9]{4,6}$'),
   username TEXT NOT NULL UNIQUE,
   avatar_url TEXT,
   bio TEXT,

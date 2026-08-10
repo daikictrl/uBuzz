@@ -22,8 +22,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
-      "package": "com.ubuzz.campus"
+      "package": "com.ubuzz.campus",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,7 +41,13 @@
           "photosPermission": "U-Buzz needs access to your photos to upload videos.",
           "cameraPermission": "U-Buzz needs access to your camera."
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5f696d63-b6e3-4a06-a944-c7f2681b2b29"
+      }
+    }
   }
 }

@@ -15,7 +15,9 @@ import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import UploadScreen from '../screens/UploadScreen';
-import { useBadgeCount, badgeManager } from '../lib/badge';
+import AnnouncementsScreen from '../screens/AnnouncementsScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import { useBadgeCount, badgeManager, useAnnouncementBadgeCount, announcementBadgeManager } from '../lib/badge';
 
 // ─── Route type definitions ──────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ type RootStackParamList = {
   AppTabs: undefined;
   UploadModal: undefined;
   Auth: undefined;
+  AdminDashboard: undefined;
 };
 
 // CQ-1 FIX: typed navigation prop instead of `any`
@@ -159,6 +162,40 @@ function AppTabs({ navigation }: { navigation: AppTabsNavigationProp }) {
       />
 
       <Tab.Screen
+        name="Announcements"
+        component={AnnouncementsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => {
+            const count = useAnnouncementBadgeCount();
+            return (
+              <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="megaphone" color={color} size={size} />
+                {count > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: -4,
+                      top: -2,
+                      backgroundColor: '#FF2D55',
+                      borderRadius: 5,
+                      width: 10,
+                      height: 10,
+                    }}
+                  />
+                )}
+              </View>
+            );
+          },
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: async (e) => {
+            announcementBadgeManager.reset();
+            AsyncStorage.setItem('ubuzz_last_viewed_announcements', new Date().toISOString()).catch(() => {});
+          },
+        })}
+      />
+
+      <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -219,18 +256,59 @@ export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
   const [passwordResetPending, setPasswordResetPending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const currentUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Unconditionally reset mute preference to false on app launch/startup
     AsyncStorage.setItem('ubuzz_mute_preference', 'false').catch(() => {});
 
-    // Initial session fetch
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending');
-      setPasswordResetPending(pending === 'true');
-      setSession(s);
-      setLoading(false);
-    });
+    // Initial session fetch with admin check before loading ends
+    async function initSession() {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending');
+        setPasswordResetPending(pending === 'true');
+        
+        if (s?.user?.id) {
+          currentUserIdRef.current = s.user.id;
+          const { data } = await supabase
+            .from('users')
+            .select('is_admin')
+            .eq('id', s.user.id)
+            .maybeSingle();
+          const isAdminUser = data?.is_admin === true;
+          setIsAdmin(isAdminUser);
+
+          // Initial check for unread announcements
+          if (!isAdminUser) {
+            const lastViewed = await AsyncStorage.getItem('ubuzz_last_viewed_announcements');
+            const { data: latestAnn } = await supabase
+              .from('announcements')
+              .select('created_at')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            if (latestAnn?.created_at) {
+              if (!lastViewed || new Date(latestAnn.created_at) > new Date(lastViewed)) {
+                announcementBadgeManager.increment();
+              }
+            }
+          }
+        } else {
+          currentUserIdRef.current = null;
+          setIsAdmin(false);
+        }
+        setSession(s);
+      } catch (err) {
+        console.error('[RootNavigator] Initial session fetch failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    initSession();
 
     /**
      * BUG-5 FIX: `onAuthStateChange` now handles SIGNED_OUT and
@@ -244,21 +322,72 @@ export default function RootNavigator() {
       if ((event as string) === 'TOKEN_REFRESH_FAILED') {
         // Session expired / token could not be refreshed — clear session.
         // The navigator will redirect to AuthScreen automatically.
+        currentUserIdRef.current = null;
         setSession(null);
+        setIsAdmin(false);
         setPasswordResetPending(false);
         console.warn('[Auth] Token refresh failed — user signed out.');
         return;
       }
 
-      const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending');
+      const pending = await AsyncStorage.getItem('ubuzz_password_reset_pending').catch(() => null);
       setPasswordResetPending(pending === 'true');
 
-      if (newSession) {
-        // Reset mute preference to false on login/session acquisition
-        AsyncStorage.setItem('ubuzz_mute_preference', 'false').catch(() => {});
-      }
+      const currentUserId = currentUserIdRef.current;
+      const newUserId = newSession?.user?.id ?? null;
 
-      setSession(newSession);
+      // Only perform database checks and loading transitions if the user changed
+      if (newUserId !== currentUserId) {
+        currentUserIdRef.current = newUserId;
+
+        if (newSession) {
+          // Reset mute preference to false on login/session acquisition
+          AsyncStorage.setItem('ubuzz_mute_preference', 'false').catch(() => {});
+          
+          // Fetch admin status before updating session/loading to avoid flickering
+          setLoading(true);
+          try {
+            const { data } = await supabase
+              .from('users')
+              .select('is_admin')
+              .eq('id', newSession.user.id)
+              .maybeSingle();
+            const isAdminUser = data?.is_admin === true;
+            setIsAdmin(isAdminUser);
+
+            if (!isAdminUser) {
+              const lastViewed = await AsyncStorage.getItem('ubuzz_last_viewed_announcements');
+              const { data: latestAnn } = await supabase
+                .from('announcements')
+                .select('created_at')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              
+              if (latestAnn?.created_at) {
+                if (!lastViewed || new Date(latestAnn.created_at) > new Date(lastViewed)) {
+                  announcementBadgeManager.increment();
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[RootNavigator] Auth state change admin check failed:', err);
+            setIsAdmin(false);
+          } finally {
+            setSession(newSession);
+            setLoading(false);
+          }
+        } else {
+          setSession(null);
+          setIsAdmin(false);
+          setLoading(false);
+        }
+      } else {
+        // User is identical (e.g. background token refresh) — just update the state silently
+        if (newSession) {
+          setSession(newSession);
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -266,8 +395,9 @@ export default function RootNavigator() {
 
   useEffect(() => {
     const userId = session?.user?.id;
-    if (!userId) {
+    if (!userId || isAdmin) {
       badgeManager.reset();
+      announcementBadgeManager.reset();
       return;
     }
 
@@ -295,12 +425,27 @@ export default function RootNavigator() {
         }
       });
 
-    // Subscribe to both
+    // Realtime announcements channel to light up the unread badge
+    const announcementsChannel = supabase
+      .channel('channel-announcements')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements' },
+        (payload) => {
+          console.log('[RootNavigator] Realtime new announcement received:', payload);
+          announcementBadgeManager.increment();
+        }
+      );
+
+    // Subscribe to channels
     likesChannel.subscribe((status) => {
       console.log(`[RootNavigator] Likes channel status for ${userId}:`, status);
     });
     commentsChannel.subscribe((status) => {
       console.log(`[RootNavigator] Comments channel status for ${userId}:`, status);
+    });
+    announcementsChannel.subscribe((status) => {
+      console.log(`[RootNavigator] Announcements channel status for ${userId}:`, status);
     });
 
     // Clean up old subscriptions on unmount/re-run
@@ -308,8 +453,9 @@ export default function RootNavigator() {
       console.log('[RootNavigator] Cleaning up realtime notification channels for user:', userId);
       supabase.removeChannel(likesChannel);
       supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(announcementsChannel);
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, isAdmin]);
 
   /**
    * CQ-4 FIX: Loading splash uses the app's blue gradient and a spinner
@@ -332,14 +478,18 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session && !passwordResetPending ? (
-          <>
-            <Stack.Screen name="AppTabs" component={AppTabs} />
-            <Stack.Screen
-              name="UploadModal"
-              component={UploadScreen}
-              options={{ presentation: 'fullScreenModal' }}
-            />
-          </>
+          isAdmin ? (
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+          ) : (
+            <>
+              <Stack.Screen name="AppTabs" component={AppTabs} />
+              <Stack.Screen
+                name="UploadModal"
+                component={UploadScreen}
+                options={{ presentation: 'fullScreenModal' }}
+              />
+            </>
+          )
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />
         )}
